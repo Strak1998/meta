@@ -26,7 +26,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const analytics = concertStore.getAnalytics();
   const state = concertStore.getState();
 
-  const phaseElapsed = Date.now() - state.phaseStartedAt;
+  const phaseElapsed = Date.now() - (state.phaseStartedAt ?? Date.now());
 
   return NextResponse.json({
     ...analytics,

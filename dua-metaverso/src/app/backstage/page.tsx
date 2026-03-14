@@ -165,7 +165,7 @@ export default function BackstageDashboard() {
 
   useEffect(() => {
     const tick = setInterval(() => {
-      setPhaseElapsed(Date.now() - state.phaseStartedAt);
+      setPhaseElapsed(Date.now() - (state.phaseStartedAt ?? Date.now()));
     }, 1000);
     return () => clearInterval(tick);
   }, [state.phaseStartedAt]);

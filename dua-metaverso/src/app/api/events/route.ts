@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import type { ArtistSlot, ConcertCommand, ConcertState } from "@/types/artist";
 import { DEFAULT_CONCERT_STATE } from "@/types/artist";
 
+export const maxDuration = 300;
+
 let concertState: ConcertState = { ...DEFAULT_CONCERT_STATE };
 const listeners = new Set<ReadableStreamDefaultController<Uint8Array>>();
 const encoder = new TextEncoder();

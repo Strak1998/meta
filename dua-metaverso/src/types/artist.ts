@@ -1,6 +1,9 @@
 export type ArtistStatus = "aguarda" | "pronto" | "em_palco" | "saiu";
 export type ArtistPosition = "esquerda" | "centro" | "direita";
 
+// Alias kept for code that uses the older name
+export type StagePosition = ArtistPosition;
+
 export interface ArtistSlot {
   id: string;
   name: string;
@@ -9,25 +12,74 @@ export interface ArtistSlot {
   skinColor: string;
   clothingColor: string;
   accentColor: string;
+  bio?: string;
+  avatarGlbUrl?: string;
+  entryAnimationDuration?: number;
+  entryMusicUrl?: string;
 }
 
-export type ConcertCommandType = "CONFETTI" | "CTA_TRIGGER" | "PHASE_CHANGE";
+export type AudioMode = "microphone" | "stream" | "file" | "silence";
+
+export type OverlayType =
+  | "countdown"
+  | "cta"
+  | "message"
+  | "poll"
+  | "leaderboard"
+  | "sponsor"
+  | "emergency"
+  | "system_message";
+
+export type CommandType =
+  | "PHASE_CHANGE"
+  | "ARTIST_ENTER"
+  | "ARTIST_EXIT"
+  | "SPOTLIGHT"
+  | "AUDIO_SOURCE"
+  | "CHAT_HIGHLIGHT"
+  | "CHAT_BROADCAST"
+  | "CTA_TRIGGER"
+  | "OVERLAY_SHOW"
+  | "OVERLAY_HIDE"
+  | "CONFETTI"
+  | "EMERGENCY_PAUSE"
+  | "EMERGENCY_RESUME";
+
+// Legacy alias kept for backward compatibility
+export type ConcertCommandType = CommandType;
 
 export interface ConcertCommand {
-  id: string;
-  type: ConcertCommandType;
-  ts: number;
+  id?: string;
+  type: CommandType;
+  /** Unix timestamp in ms — preferred field name */
+  timestamp?: number;
+  /** Legacy alias for timestamp (kept for backward compatibility) */
+  ts?: number;
+  emittedBy?: string;
   payload?: {
     colors?: string[];
     intensity?: "low" | "high";
     phase?: string;
+    [key: string]: unknown;
   };
+}
+
+export interface ActiveOverlay {
+  type: OverlayType;
+  data: Record<string, unknown>;
+  expiresAt?: number;
 }
 
 export interface ConcertState {
   phase: string;
   artists: ArtistSlot[];
   commandLog: ConcertCommand[];
+  audioMode?: AudioMode;
+  audioUrl?: string;
+  activeOverlay?: ActiveOverlay;
+  spotlight?: string;
+  isPaused?: boolean;
+  phaseStartedAt?: number;
 }
 
 export const DEFAULT_CONCERT_STATE: ConcertState = {
@@ -38,4 +90,7 @@ export const DEFAULT_CONCERT_STATE: ConcertState = {
     { id: "estraca", name: "\uD83C\uDFA4 ESTRACA", status: "aguarda", defaultPosition: "centro", skinColor: "#291711", clothingColor: "#ffd700", accentColor: "#ffaa00" },
   ],
   commandLog: [],
+  audioMode: "silence",
+  isPaused: false,
+  phaseStartedAt: 0,
 };

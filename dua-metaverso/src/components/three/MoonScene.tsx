@@ -102,7 +102,7 @@ function PostProcessing({
 
   return (
     <EffectComposer enableNormalPass={needsNormalPass}>
-      {needsNormalPass && (
+      {needsNormalPass ? (
         <N8AO
           aoRadius={0.8}
           intensity={2}
@@ -112,26 +112,26 @@ function PostProcessing({
           distanceFalloff={1.5}
           halfRes
         />
-      )}
+      ) : <></>}
       <Bloom
         luminanceThreshold={0.3}
         mipmapBlur
         intensity={quality === "low" ? 1.5 : 2.5}
         radius={0.85}
       />
-      {quality !== "low" && !isMobile && (
+      {quality !== "low" && !isMobile ? (
         <DepthOfField
           focusDistance={0.012}
           focalLength={0.06}
           bokehScale={quality === "high" ? 3 : 1.5}
         />
-      )}
-      {quality === "high" && !isMobile && (
+      ) : <></>}
+      {quality === "high" && !isMobile ? (
         <ChromaticAberration
           blendFunction={BlendFunction.NORMAL}
           offset={new THREE.Vector2(0.0006, 0.0006)}
         />
-      )}
+      ) : <></>}
       <Vignette eskil={false} offset={0.05} darkness={1.4} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
     </EffectComposer>
@@ -1354,8 +1354,16 @@ function AudienceCrowd({
 }) {
   const maxAvatars = quality === "high" ? 45 : quality === "medium" ? 24 : 10;
 
+  // Hysteresis: only recompute crowd when viewerCount changes by more than 5
+  // to avoid re-spawning all avatars on each single viewer join/leave.
+  const stableViewerCount = useRef(viewerCount);
+  if (Math.abs(viewerCount - stableViewerCount.current) > 5) {
+    stableViewerCount.current = viewerCount;
+  }
+  const effectiveViewerCount = stableViewerCount.current;
+
   const avatars = useMemo(() => {
-    const count = Math.min(Math.max(viewerCount * 2, 16), maxAvatars);
+    const count = Math.min(Math.max(effectiveViewerCount * 2, 16), maxAvatars);
     const result = [];
     for (let i = 0; i < count; i++) {
       const row = Math.floor(i / 12);
@@ -1381,7 +1389,7 @@ function AudienceCrowd({
       });
     }
     return result;
-  }, [viewerCount, maxAvatars]);
+  }, [effectiveViewerCount, maxAvatars]);
 
   return (
     <group>
@@ -1612,6 +1620,21 @@ export default function MoonScene({
   artists?: ArtistSlot[];
 }) {
   const [quality, setQuality] = useState<Quality>("high");
+  const [webglAvailable, setWebglAvailable] = useState(true);
+
+  /* Detect WebGL support once on mount */
+  useEffect(() => {
+    try {
+      const canvas = document.createElement("canvas");
+      const ctx =
+        canvas.getContext("webgl2") ??
+        canvas.getContext("webgl") ??
+        canvas.getContext("experimental-webgl");
+      if (!ctx) setWebglAvailable(false);
+    } catch {
+      setWebglAvailable(false);
+    }
+  }, []);
 
   /* Detect mobile once on mount — caps initial quality */
   const isMobile = useMemo(() => {
@@ -1643,6 +1666,31 @@ export default function MoonScene({
 
   return (
     <div className="absolute inset-0 w-full h-full bg-[#030305]">
+      {!webglAvailable ? (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "radial-gradient(ellipse at center, #0a0a1a 0%, #030305 100%)",
+            color: "#00ffcc",
+            fontFamily: "'Orbitron', monospace",
+            textAlign: "center",
+            padding: "2rem",
+          }}
+        >
+          <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🌙</div>
+          <div style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.5rem" }}>
+            DUA METAVERSO DA LUA
+          </div>
+          <div style={{ fontSize: "0.9rem", color: "#888", maxWidth: "320px" }}>
+            O teu navegador não suporta WebGL. Atualiza o browser ou ativa a aceleração de hardware para ver a cena 3D.
+          </div>
+        </div>
+      ) : (
       <Canvas
         shadows
         camera={{ position: [0, 3.5, 9], fov: 52, near: 0.1, far: 350 }}
@@ -1781,6 +1829,7 @@ export default function MoonScene({
           <PostProcessing quality={effectiveQuality} isMobile={isMobile} />
         </Suspense>
       </Canvas>
+      )}
     </div>
   );
 }

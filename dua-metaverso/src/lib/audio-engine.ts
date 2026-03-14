@@ -38,7 +38,23 @@ export class AudioEngine {
     const ctx = this.getContext();
     if (ctx.state === "suspended") await ctx.resume();
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    } catch (err) {
+      const error = err as DOMException;
+      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+        throw new Error(
+          "Permissão de microfone negada. Para conceder acesso: clica no ícone de cadeado na barra de endereço do browser e ativa o microfone. Em seguida, recarrega a página e tenta novamente."
+        );
+      }
+      if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+        throw new Error(
+          "Nenhum microfone encontrado. Liga um microfone e tenta novamente."
+        );
+      }
+      throw new Error(`Erro ao aceder ao microfone: ${error.message || error.name}`);
+    }
     this.mediaStream = stream;
 
     this.gainNode = ctx.createGain();
@@ -68,9 +84,41 @@ export class AudioEngine {
     const ctx = this.getContext();
     if (ctx.state === "suspended") await ctx.resume();
 
-    const audio = new Audio(url);
+    const audio = new Audio();
     audio.crossOrigin = "anonymous";
-    audio.autoplay = true;
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        audio.src = "";
+        reject(
+          new Error(
+            "O stream não respondeu em 5 segundos. Verifica se o URL está correcto e acessível. Sugestão: testa o URL directamente no browser antes de o usar aqui."
+          )
+        );
+      }, 5000);
+
+      audio.oncanplay = () => {
+        clearTimeout(timeout);
+        resolve();
+      };
+
+      audio.onerror = () => {
+        clearTimeout(timeout);
+        const code = audio.error?.code;
+        if (code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+          reject(new Error("Formato de áudio não suportado. Usa MP3, AAC ou Ogg."));
+        } else if (code === MediaError.MEDIA_ERR_NETWORK) {
+          reject(new Error("Erro de rede ao carregar o stream. Verifica a ligação e o URL."));
+        } else {
+          reject(new Error("Não foi possível carregar o stream de áudio. Verifica o URL e as definições de CORS."));
+        }
+      };
+
+      audio.src = url;
+      audio.autoplay = true;
+      audio.load();
+    });
+
     this.audioElement = audio;
 
     this.gainNode = ctx.createGain();

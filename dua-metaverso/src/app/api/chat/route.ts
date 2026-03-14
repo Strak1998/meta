@@ -1,14 +1,29 @@
 import { NextRequest } from "next/server";
 import { liveStore } from "@/lib/live-store";
 
+export const maxDuration = 300;
+
+function sanitizeText(raw: string): string {
+  return raw
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 // POST /api/chat — send a new chat message
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { user, text, avatar, flag } = body;
 
-    if (!user || !text || typeof text !== "string" || text.trim().length === 0) {
-      return Response.json({ error: "user and text are required" }, { status: 400 });
+    if (!user || typeof user !== "string" || user.trim().length === 0) {
+      return Response.json({ error: "user is required" }, { status: 400 });
+    }
+
+    if (!text || typeof text !== "string" || text.trim().length === 0) {
+      return Response.json({ error: "text is required" }, { status: 400 });
     }
 
     if (text.length > 500) {
@@ -16,10 +31,10 @@ export async function POST(request: NextRequest) {
     }
 
     const message = liveStore.addMessage({
-      user: String(user).slice(0, 30),
-      text: text.trim().slice(0, 500),
-      avatar,
-      flag,
+      user: sanitizeText(String(user).trim().slice(0, 30)),
+      text: sanitizeText(text.trim().slice(0, 500)),
+      avatar: typeof avatar === "string" ? avatar.slice(0, 10) : undefined,
+      flag: typeof flag === "string" ? flag.slice(0, 10) : undefined,
     });
 
     return Response.json(message, { status: 201 });
