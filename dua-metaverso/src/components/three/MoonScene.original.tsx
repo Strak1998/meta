@@ -21,7 +21,6 @@ import {
 } from "@react-three/postprocessing";
 import { BlendFunction, ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
-import { AdaptiveQualityProvider, PerformanceMonitor, useQuality } from "./AdaptiveQuality";
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -36,63 +35,28 @@ type ConcertPhase =
   | "finale";
 
 /* ═══════════════════════════════════════════════════════
-   POST-PROCESSING — Adaptive cinematic pipeline
-   Automatically scales quality based on device capability
+   POST-PROCESSING — Cinematic AAA pipeline
+   Waits for WebGL context before mounting EffectComposer
    ═══════════════════════════════════════════════════════ */
 
 function PostProcessing() {
   const { gl } = useThree();
   const [ready, setReady] = useState(false);
-  const quality = useQuality();
 
   useEffect(() => {
     if (gl) setReady(true);
   }, [gl]);
 
-  if (!ready || !quality.enablePostProcessing) return null;
-
-  if (quality.level === "low") {
-    return (
-      <EffectComposer>
-        <Bloom
-          luminanceThreshold={0.3}
-          mipmapBlur
-          intensity={2.5}
-          radius={0.85}
-        />
-        <Vignette eskil={false} offset={0.05} darkness={1.4} />
-        <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-      </EffectComposer>
-    );
-  }
-
-  if (quality.level === "medium") {
-    return (
-      <EffectComposer>
-        <Bloom
-          luminanceThreshold={0.3}
-          mipmapBlur
-          intensity={2.5}
-          radius={0.85}
-        />
-        <ChromaticAberration
-          blendFunction={BlendFunction.NORMAL}
-          offset={new THREE.Vector2(0.0006, 0.0006)}
-        />
-        <Vignette eskil={false} offset={0.05} darkness={1.4} />
-        <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-      </EffectComposer>
-    );
-  }
+  if (!ready) return null;
 
   return (
     <EffectComposer enableNormalPass>
       <N8AO
         aoRadius={0.8}
         intensity={2}
-        aoSamples={12}
-        denoiseSamples={3}
-        denoiseRadius={10}
+        aoSamples={16}
+        denoiseSamples={4}
+        denoiseRadius={12}
         distanceFalloff={1.5}
         halfRes
       />
@@ -125,7 +89,6 @@ function MassiveMoon() {
   const moonRef = useRef<THREE.Mesh>(null);
   const ringsRef = useRef<THREE.Group>(null);
   const haloRef = useRef<THREE.Mesh>(null);
-  const quality = useQuality();
 
   useFrame((s) => {
     const t = s.clock.elapsedTime;
@@ -140,7 +103,7 @@ function MassiveMoon() {
   return (
     <group>
       <mesh ref={moonRef} position={[0, 22, -70]}>
-        <sphereGeometry args={[35, quality.moonDetail, quality.moonDetail]} />
+        <sphereGeometry args={[35, 128, 128]} />
         <meshStandardMaterial
           color="#b8b8c8"
           roughness={0.95}
@@ -150,7 +113,7 @@ function MassiveMoon() {
         />
       </mesh>
       <mesh ref={haloRef} position={[0, 22, -71]}>
-        <sphereGeometry args={[37, Math.max(32, quality.moonDetail / 2), Math.max(32, quality.moonDetail / 2)]} />
+        <sphereGeometry args={[37, 64, 64]} />
         <meshBasicMaterial color="#4488cc" transparent opacity={0.04} side={THREE.BackSide} />
       </mesh>
       <mesh position={[0, 22, -72]}>
@@ -164,7 +127,7 @@ function MassiveMoon() {
           { radius: 44, thickness: 0.015, color: "#ffd700", opacity: 0.03, rotX: Math.PI / 3, rotY: 0.5 },
         ].map((ring, i) => (
           <mesh key={i} rotation={[ring.rotX, ring.rotY, i * 0.2]}>
-            <torusGeometry args={[ring.radius, ring.thickness, 8, 128]} />
+            <torusGeometry args={[ring.radius, ring.thickness, 8, 256]} />
             <meshBasicMaterial color={ring.color} transparent opacity={ring.opacity} />
           </mesh>
         ))}
@@ -180,7 +143,6 @@ function MassiveMoon() {
 function HolographicStage() {
   const pulseRef = useRef<THREE.Mesh>(null);
   const scanRef = useRef<THREE.Mesh>(null);
-  const quality = useQuality();
 
   useFrame((s) => {
     const t = s.clock.elapsedTime;
@@ -198,12 +160,10 @@ function HolographicStage() {
     }
   });
 
-  const circleSegments = quality.stageDetail;
-
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-        <circleGeometry args={[18, circleSegments]} />
+        <circleGeometry args={[18, 128]} />
         <meshStandardMaterial color="#040408" roughness={0.03} metalness={0.98} envMapIntensity={0.5} />
       </mesh>
       {Array.from({ length: 16 }).map((_, i) => (
@@ -223,7 +183,7 @@ function HolographicStage() {
         <meshBasicMaterial color="#00ffcc" transparent opacity={0.06} blending={THREE.AdditiveBlending} depthWrite={false} />
       </mesh>
       <mesh ref={pulseRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <ringGeometry args={[17.4, 18, circleSegments]} />
+        <ringGeometry args={[17.4, 18, 128]} />
         <meshBasicMaterial color="#00ffcc" transparent opacity={0.6} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
@@ -1156,8 +1116,7 @@ function CinematicLighting({ phase }: { phase: ConcertPhase }) {
 
 function FloatingParticles() {
   const ref = useRef<THREE.Points>(null);
-  const quality = useQuality();
-  const count = quality.particleCount;
+  const count = 300;
 
   const positions = useMemo(() => {
     const arr = new Float32Array(count * 3);
@@ -1167,7 +1126,7 @@ function FloatingParticles() {
       arr[i * 3 + 2] = (Math.random() - 0.5) * 35 - 5;
     }
     return arr;
-  }, [count]);
+  }, []);
 
   useFrame((s) => {
     if (ref.current) {
@@ -1208,121 +1167,89 @@ export default function MoonScene({
   const showEstraca = concertPhase === "estraca_performance" || concertPhase === "finale";
 
   return (
-    <AdaptiveQualityProvider>
-      <div className="absolute inset-0 w-full h-full bg-[#030305]">
-        <SceneContent
-          viewerCount={viewerCount}
-          concertPhase={concertPhase}
-          showDUA2Screen={showDUA2Screen}
-          showVado={showVado}
-          showUzzy={showUzzy}
-          showEstraca={showEstraca}
-        />
-      </div>
-    </AdaptiveQualityProvider>
-  );
-}
+    <div className="absolute inset-0 w-full h-full bg-[#030305]">
+      <Canvas
+        shadows
+        camera={{ position: [0, 3.5, 9], fov: 52, near: 0.1, far: 350 }}
+        gl={{
+          antialias: true,
+          alpha: false,
+          powerPreference: "high-performance",
+          stencil: false,
+          depth: true,
+        }}
+        onCreated={({ gl }) => {
+          gl.toneMapping = THREE.ACESFilmicToneMapping;
+          gl.toneMappingExposure = 1.05;
+          gl.shadowMap.type = THREE.PCFSoftShadowMap;
+        }}
+      >
+        <color attach="background" args={["#030305"]} />
+        <fog attach="fog" args={["#030305", 12, 60]} />
 
-function SceneContent({
-  viewerCount,
-  concertPhase,
-  showDUA2Screen,
-  showVado,
-  showUzzy,
-  showEstraca,
-}: {
-  viewerCount: number;
-  concertPhase: ConcertPhase;
-  showDUA2Screen: boolean;
-  showVado: boolean;
-  showUzzy: boolean;
-  showEstraca: boolean;
-}) {
-  const quality = useQuality();
+        <Suspense fallback={null}>
+          <MassiveMoon />
 
-  return (
-    <Canvas
-      shadows
-      camera={{ position: [0, 3.5, 9], fov: 52, near: 0.1, far: 350 }}
-      gl={{
-        antialias: quality.level !== "low",
-        alpha: false,
-        powerPreference: "high-performance",
-        stencil: false,
-        depth: true,
-      }}
-      onCreated={({ gl }) => {
-        gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = 1.05;
-        gl.shadowMap.enabled = true;
-        gl.shadowMap.type = THREE.PCFSoftShadowMap;
-      }}
-    >
-      <color attach="background" args={["#030305"]} />
-      <fog attach="fog" args={["#030305", 12, 60]} />
+          <Stars radius={140} depth={80} count={8000} factor={5.5} saturation={0.12} fade speed={0.5} />
+          <Sparkles count={400} scale={20} size={2} speed={0.25} opacity={0.18} color="#00ffcc" />
+          <Sparkles count={180} scale={16} size={3} speed={0.15} opacity={0.1} color="#ff00ff" />
+          <Sparkles count={80} scale={12} size={1.5} speed={0.3} opacity={0.08} color="#ffd700" />
 
-      <Suspense fallback={null}>
-        <PerformanceMonitor />
+          <CinematicLighting phase={concertPhase} />
+          <HolographicStage />
+          <DJBooth />
+          <DJStarAvatar />
 
-        <MassiveMoon />
+          {/* DUA 2.0 Holographic Presentation Screen */}
+          <DUA2PresentationScreen active={showDUA2Screen} />
 
-        <Stars radius={140} depth={80} count={quality.level === "low" ? 4000 : 8000} factor={5.5} saturation={0.12} fade speed={0.5} />
-        <Sparkles count={quality.level === "low" ? 200 : 400} scale={20} size={2} speed={0.25} opacity={0.18} color="#00ffcc" />
-        <Sparkles count={quality.level === "low" ? 90 : 180} scale={16} size={3} speed={0.15} opacity={0.1} color="#ff00ff" />
-        <Sparkles count={quality.level === "low" ? 40 : 80} scale={12} size={1.5} speed={0.3} opacity={0.08} color="#ffd700" />
+          {/* Guest Artist Avatars — cinematic entrances */}
+          <GuestArtistAvatar
+            name={"\uD83C\uDFA4 VADO MKA"}
+            active={showVado}
+            position={[-4, 0, -1]}
+            skinColor="#3b2219"
+            shirtColor="#ff4400"
+            accentColor="#ff6600"
+            entranceSide="left"
+          />
+          <GuestArtistAvatar
+            name={"\uD83C\uDFA4 UZZY"}
+            active={showUzzy}
+            position={[4, 0, -1]}
+            skinColor="#4a2c14"
+            shirtColor="#2244ff"
+            accentColor="#4488ff"
+            entranceSide="right"
+          />
+          <GuestArtistAvatar
+            name={"\uD83C\uDFA4 ESTRACA"}
+            active={showEstraca}
+            position={[0, 0, 1]}
+            skinColor="#291711"
+            shirtColor="#ffd700"
+            accentColor="#ffaa00"
+            entranceSide="left"
+          />
 
-        <CinematicLighting phase={concertPhase} />
-        <HolographicStage />
-        <DJBooth />
-        <DJStarAvatar />
+          <AudienceCrowd viewerCount={viewerCount} />
+          <FloatingParticles />
 
-        <DUA2PresentationScreen active={showDUA2Screen} />
+          <OrbitControls
+            enablePan={false}
+            maxPolarAngle={Math.PI / 2 - 0.05}
+            minDistance={2}
+            maxDistance={20}
+            target={[0, 1.3, -1.5]}
+            autoRotate
+            autoRotateSpeed={0.2}
+            enableDamping
+            dampingFactor={0.035}
+          />
 
-        <GuestArtistAvatar
-          name={"\uD83C\uDFA4 VADO MKA"}
-          active={showVado}
-          position={[-4, 0, -1]}
-          skinColor="#3b2219"
-          shirtColor="#ff4400"
-          accentColor="#ff6600"
-          entranceSide="left"
-        />
-        <GuestArtistAvatar
-          name={"\uD83C\uDFA4 UZZY"}
-          active={showUzzy}
-          position={[4, 0, -1]}
-          skinColor="#4a2c14"
-          shirtColor="#2244ff"
-          accentColor="#4488ff"
-          entranceSide="right"
-        />
-        <GuestArtistAvatar
-          name={"\uD83C\uDFA4 ESTRACA"}
-          active={showEstraca}
-          position={[0, 0, 1]}
-          skinColor="#291711"
-          shirtColor="#ffd700"
-          accentColor="#ffaa00"
-          entranceSide="left"
-        />
-
-        <AudienceCrowd viewerCount={viewerCount} />
-        <FloatingParticles />
-
-        <OrbitControls
-          enablePan={false}
-          maxPolarAngle={Math.PI / 2 - 0.05}
-          minDistance={2}
-          maxDistance={20}
-          target={[0, 1.3, -1.5]}
-          autoRotate
-          autoRotateSpeed={0.2}
-          enableDamping
-          dampingFactor={0.035}
-        />
-
-        <PostProcessing />
-      </Suspense>
-    </Canvas>
+          <PostProcessing />
+        </Suspense>
+      </Canvas>
+    </div>
   );
 }
