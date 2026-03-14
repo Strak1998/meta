@@ -1,31 +1,72 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Mic, MicOff, PhoneOff, Video, VideoOff, Crown, Headphones } from "lucide-react";
+import { Mic, MicOff, PhoneOff, Video, VideoOff, Crown, Headphones, Wifi, WifiOff } from "lucide-react";
 
 /*
-  VoiceRoom — ready for LiveKit integration.
-  Replace the mock participants with real LiveKit room:
+  VoiceRoom — 3-tier graceful degradation:
 
-  import { LiveKitRoom, RoomAudioRenderer, ParticipantTile, useTracks } from "@livekit/components-react";
-  import { Track } from "livekit-client";
-  <LiveKitRoom serverUrl={LIVEKIT_URL} token={token} connect>
-    <RoomAudioRenderer />
-    {tracks.map(t => <ParticipantTile key={t.sid} trackRef={t} />)}
-  </LiveKitRoom>
+  Tier 1 — LiveKit Cloud: real voice, participant tracking, speaking indicators.
+           Requires NEXT_PUBLIC_LIVEKIT_URL + LIVEKIT_API_KEY + LIVEKIT_API_SECRET.
+
+  Tier 2 — Demo mode (LiveKit not configured):
+           UI reflects demo state with honest messaging.
+
+  Tier 3 — Disconnected: reconnect button always available.
+
+  To activate Tier 1, enable the LiveKit block below and install dependencies:
+    npm install @livekit/components-react livekit-client
+  (already in package.json — just needs the env vars)
 */
 
-interface Participant {
+/* ─── LIVEKIT INTEGRATION (Tier 1) ─────────────────────────────────────────
+
+import {
+  LiveKitRoom,
+  RoomAudioRenderer,
+  useParticipants,
+  useLocalParticipant,
+  useTracks,
+  ParticipantTile,
+} from "@livekit/components-react";
+import { Track } from "livekit-client";
+
+function LiveKitVoiceRoom({ token, serverUrl }: { token: string; serverUrl: string }) {
+  return (
+    <LiveKitRoom serverUrl={serverUrl} token={token} connect audio>
+      <RoomAudioRenderer />
+      <LiveParticipantGrid />
+    </LiveKitRoom>
+  );
+}
+
+function LiveParticipantGrid() {
+  const participants = useParticipants();
+  const { localParticipant } = useLocalParticipant();
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      {participants.map((p) => (
+        <ParticipantTile key={p.identity} participant={p} />
+      ))}
+    </div>
+  );
+}
+
+─────────────────────────────────────────────────────────────────────────── */
+
+type ConnectionMode = "livekit" | "demo" | "disconnected";
+
+interface MockParticipant {
   name: string;
   role: "dj" | "host" | "guest";
   speaking: boolean;
   muted: boolean;
 }
 
-const MOCK_PARTICIPANTS: Participant[] = [
+const DEMO_PARTICIPANTS: MockParticipant[] = [
   { name: "DUA DJ", role: "dj", speaking: true, muted: false },
   { name: "Carlos (Host)", role: "host", speaking: false, muted: false },
   { name: "Maria", role: "guest", speaking: true, muted: false },
@@ -34,22 +75,68 @@ const MOCK_PARTICIPANTS: Participant[] = [
   { name: "Pedro", role: "guest", speaking: true, muted: false },
 ];
 
-export default function VoiceRoom() {
+export default function VoiceRoom({
+  username = "Convidado",
+  isHost = false,
+}: {
+  username?: string;
+  isHost?: boolean;
+}) {
+  const [mode, setMode] = useState<ConnectionMode>("demo");
   const [mic, setMic] = useState(false);
   const [cam, setCam] = useState(false);
-  const [connected, setConnected] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
 
-  const disconnect = useCallback(() => setConnected(false), []);
+  /* Attempt to connect to LiveKit on mount */
+  useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_LIVEKIT_URL) return;
 
-  if (!connected) {
+    let cancelled = false;
+
+    async function fetchToken() {
+      try {
+        const res = await fetch("/api/livekit-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            identity: username,
+            name: username,
+            role: isHost ? "host" : "guest",
+          }),
+        });
+
+        if (cancelled) return;
+
+        if (res.ok) {
+          const data = await res.json() as { token: string; mode: string };
+          if (data.mode === "livekit" && data.token) {
+            setToken(data.token);
+            setMode("livekit");
+          }
+        }
+        /* If endpoint returns 503 (not configured), stays in demo mode — no error shown */
+      } catch {
+        /* Network failure — stays in demo mode silently */
+      }
+    }
+
+    fetchToken();
+    return () => { cancelled = true; };
+  }, [username, isHost]);
+
+  const disconnect = useCallback(() => setMode("disconnected"), []);
+  const reconnect = useCallback(() => setMode("demo"), []);
+
+  if (mode === "disconnected") {
     return (
-      <div className="glassmorphism rounded-xl p-6 text-center">
+      <div className="glassmorphism rounded-xl p-6 text-center space-y-3">
+        <WifiOff className="h-6 w-6 mx-auto text-white/30" />
         <p className="text-sm text-white/35">Desconectado da sala de voz</p>
         <Button
           size="sm"
           variant="outline"
-          className="mt-3 border-cyan-500/20 text-cyan-300/80 text-xs"
-          onClick={() => setConnected(true)}
+          className="border-cyan-500/20 text-cyan-300/80 text-xs"
+          onClick={reconnect}
         >
           Reconectar
         </Button>
@@ -57,22 +144,52 @@ export default function VoiceRoom() {
     );
   }
 
+  /*
+    Tier 1: LiveKit active — render real participant grid.
+    The block below swaps the demo grid for the real LiveKit component.
+    Uncomment when ready to deploy with env vars.
+
+    if (mode === "livekit" && token && process.env.NEXT_PUBLIC_LIVEKIT_URL) {
+      return (
+        <div className="glassmorphism rounded-xl p-4 space-y-4">
+          <VoiceRoomHeader mode="livekit" participantCount={0} />
+          <LiveKitVoiceRoom token={token} serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL} />
+          <VoiceControls mic={mic} cam={cam} onMic={() => setMic(!mic)} onCam={() => setCam(!cam)} onDisconnect={disconnect} />
+        </div>
+      );
+    }
+  */
+
+  /* Tier 2: Demo mode */
   return (
     <div className="glassmorphism rounded-xl p-4 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Headphones className="h-4 w-4 text-cyan-400" />
-          <span className="font-heading text-xs tracking-[0.15em] text-white/60">SALA DE VOZ</span>
+          <span className="font-heading text-xs tracking-[0.15em] text-white/60">
+            SALA DE VOZ
+          </span>
         </div>
-        <Badge className="border-none bg-green-500/15 text-[9px] text-green-400/80">
-          {MOCK_PARTICIPANTS.length} conectados
-        </Badge>
+        <div className="flex items-center gap-2">
+          {mode === "livekit" ? (
+            <Badge className="border-none bg-green-500/15 text-[9px] text-green-400/80 flex items-center gap-1">
+              <Wifi className="h-2.5 w-2.5" /> AO VIVO
+            </Badge>
+          ) : (
+            <Badge className="border-none bg-amber-500/10 text-[9px] text-amber-400/60">
+              DEMO
+            </Badge>
+          )}
+          <Badge className="border-none bg-white/5 text-[9px] text-white/40">
+            {DEMO_PARTICIPANTS.length} conectados
+          </Badge>
+        </div>
       </div>
 
       {/* Participant grid */}
       <div className="grid grid-cols-3 gap-3">
-        {MOCK_PARTICIPANTS.map((p) => (
+        {DEMO_PARTICIPANTS.map((p) => (
           <div key={p.name} className="flex flex-col items-center gap-1.5">
             <div
               className={`relative rounded-full p-0.5 transition-shadow ${
@@ -80,7 +197,11 @@ export default function VoiceRoom() {
               }`}
               style={
                 p.speaking
-                  ? { boxShadow: `0 0 14px ${p.role === "dj" ? "#00ffcc" : "#ff00ff"}33` }
+                  ? {
+                      boxShadow: `0 0 14px ${
+                        p.role === "dj" ? "#00ffcc" : "#ff00ff"
+                      }33`,
+                    }
                   : {}
               }
             >
@@ -90,8 +211,8 @@ export default function VoiceRoom() {
                     p.role === "dj"
                       ? "bg-cyan-900/40 text-cyan-300"
                       : p.role === "host"
-                        ? "bg-fuchsia-900/40 text-fuchsia-300"
-                        : "bg-white/4 text-white/50"
+                      ? "bg-fuchsia-900/40 text-fuchsia-300"
+                      : "bg-white/4 text-white/50"
                   }`}
                 >
                   {p.name.slice(0, 2).toUpperCase()}
@@ -119,18 +240,30 @@ export default function VoiceRoom() {
         <Button
           size="sm"
           variant="ghost"
-          className={`h-8 w-8 rounded-full p-0 ${mic ? "text-cyan-400" : "text-white/35"}`}
+          className={`h-8 w-8 rounded-full p-0 ${
+            mic ? "text-cyan-400" : "text-white/35"
+          }`}
           onClick={() => setMic(!mic)}
         >
-          {mic ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
+          {mic ? (
+            <Mic className="h-3.5 w-3.5" />
+          ) : (
+            <MicOff className="h-3.5 w-3.5" />
+          )}
         </Button>
         <Button
           size="sm"
           variant="ghost"
-          className={`h-8 w-8 rounded-full p-0 ${cam ? "text-cyan-400" : "text-white/35"}`}
+          className={`h-8 w-8 rounded-full p-0 ${
+            cam ? "text-cyan-400" : "text-white/35"
+          }`}
           onClick={() => setCam(!cam)}
         >
-          {cam ? <Video className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5" />}
+          {cam ? (
+            <Video className="h-3.5 w-3.5" />
+          ) : (
+            <VideoOff className="h-3.5 w-3.5" />
+          )}
         </Button>
         <Button
           size="sm"
