@@ -52,10 +52,30 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt" className="dark" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {process.env.NEXT_PUBLIC_LIVEKIT_URL && (
+          <link rel="preconnect" href={process.env.NEXT_PUBLIC_LIVEKIT_URL} />
+        )}
+        <link rel="dns-prefetch" href="https://dua.2lados.pt" />
+      </head>
       <body
         className={`${orbitron.variable} ${montserrat.variable} font-sans antialiased bg-[#030305] text-[#e8e8e8]`}
       >
+        <noscript>
+          <div style={{ padding: "2rem", textAlign: "center", color: "#e8e8e8", background: "#030305", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1rem" }}>
+            <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>DUA Metaverso da Lua</h1>
+            <p>A experiencia interactiva requer JavaScript activado.</p>
+            <a href="https://dua.2lados.pt" style={{ color: "#00ffcc", textDecoration: "underline" }}>Visitar dua.2lados.pt</a>
+          </div>
+        </noscript>
         {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}`,
+          }}
+        />
       </body>
     </html>
   );

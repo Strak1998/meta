@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,12 +17,15 @@ export default function MusicModal({
 }) {
   const [prompt, setPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
   const handleGenerate = () => {
     if (!prompt.trim()) return;
     setGenerating(true);
     onGenerate(prompt);
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       setGenerating(false);
       onOpenChange(false);
       setPrompt("");

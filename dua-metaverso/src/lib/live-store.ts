@@ -1,5 +1,6 @@
 // In-memory store for chat messages and reactions
 // In production, replace with Redis/PostgreSQL for persistence across instances
+import type { PresencePayload } from "@/types/user";
 
 export interface ChatMessage {
   id: string;
@@ -54,6 +55,10 @@ class LiveStore {
     }
   }
 
+  emitUserPresence(payload: PresencePayload) {
+    this.broadcast("presence", payload);
+  }
+
   addMessage(msg: Omit<ChatMessage, "id" | "timestamp">) {
     const message: ChatMessage = {
       ...msg,
@@ -90,6 +95,10 @@ class LiveStore {
 
   getViewerCount() {
     return this.viewerCount;
+  }
+
+  getSubscriberCount() {
+    return this.listeners.size;
   }
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useRef, useMemo, useState, useEffect } from "react";
+import { Suspense, useRef, useMemo, useState, useEffect, useCallback, createContext, useContext } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   Stars,
@@ -21,6 +21,164 @@ import {
 } from "@react-three/postprocessing";
 import { BlendFunction, ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
+import { type DeviceTier, getDeviceProfile } from "@/lib/device-profile";
+import { getCountryFlag } from "@/lib/countries";
+import type { UserProfile } from "@/types/user";
+import { ConcertLighting } from "./ConcertLighting";
+import { AudienceCrowd } from "./AudienceCrowd";
+import { getGradientMap } from "@/lib/gradient-map";
+
+/* ═══════════════════════════════════════════════════════
+   TIER CONTEXT
+   ═══════════════════════════════════════════════════════ */
+
+const TierContext = createContext<DeviceTier>("MID");
+const useTier = () => useContext(TierContext);
+
+/* ═══════════════════════════════════════════════════════
+   TIER CONFIG
+   ═══════════════════════════════════════════════════════ */
+
+const TIER_CONFIG = {
+  HIGH: {
+    starCount: 8000,
+    sparklesCyan: 400,
+    sparklesMagenta: 180,
+    sparklesGold: 80,
+    particleCount: 50000,
+    shadowMapSize: 2048,
+    dprRange: [1, 2] as [number, number],
+    audienceMax: 20,
+    braidCount: 36,
+    gridLines: 16,
+    moonSegments: 128,
+    antialias: true,
+    shadows: true,
+  },
+  MID: {
+    starCount: 5000,
+    sparklesCyan: 200,
+    sparklesMagenta: 0,
+    sparklesGold: 0,
+    particleCount: 15000,
+    shadowMapSize: 1024,
+    dprRange: [1, 1.5] as [number, number],
+    audienceMax: 12,
+    braidCount: 18,
+    gridLines: 8,
+    moonSegments: 64,
+    antialias: true,
+    shadows: false,
+  },
+  LOW: {
+    starCount: 1500,
+    sparklesCyan: 80,
+    sparklesMagenta: 0,
+    sparklesGold: 0,
+    particleCount: 2000,
+    shadowMapSize: 512,
+    dprRange: [1, 1] as [number, number],
+    audienceMax: 6,
+    braidCount: 0,
+    gridLines: 0,
+    moonSegments: 32,
+    antialias: false,
+    shadows: false,
+  },
+} as const;
+
+/* ═══════════════════════════════════════════════════════
+   PROCEDURAL MOON SHADER (HIGH TIER)
+   ═══════════════════════════════════════════════════════ */
+
+const MOON_VERTEX = `
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vWorldPos;
+void main() {
+  vUv = uv;
+  vNormal = normalize(normalMatrix * normal);
+  vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+const MOON_FRAGMENT = `
+uniform float uTime;
+uniform vec3 uLightDir;
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vWorldPos;
+
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = hash(i);
+  float b = hash(i + vec2(1.0, 0.0));
+  float c = hash(i + vec2(0.0, 1.0));
+  float d = hash(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 5; i++) {
+    v += a * noise(p);
+    p *= 2.0;
+    a *= 0.5;
+  }
+  return v;
+}
+
+float crater(vec2 p, vec2 center, float radius) {
+  float d = length(p - center) / radius;
+  float rim = smoothstep(0.9, 1.0, d) - smoothstep(1.0, 1.1, d);
+  float floor0 = 1.0 - smoothstep(0.0, 0.85, d) * 0.15;
+  return floor0 + rim * 0.08;
+}
+
+void main() {
+  vec2 uv = vUv * 12.0;
+  float n = fbm(uv * 1.5);
+  float detail = fbm(uv * 6.0) * 0.3;
+  float albedo = 0.55 + n * 0.25 + detail;
+
+  // Procedural craters
+  albedo *= crater(vUv, vec2(0.3, 0.4), 0.08);
+  albedo *= crater(vUv, vec2(0.6, 0.7), 0.06);
+  albedo *= crater(vUv, vec2(0.2, 0.8), 0.04);
+  albedo *= crater(vUv, vec2(0.7, 0.3), 0.05);
+  albedo *= crater(vUv, vec2(0.5, 0.5), 0.07);
+  albedo *= crater(vUv, vec2(0.8, 0.6), 0.035);
+
+  // Normal perturbation for depth
+  vec3 normal = normalize(vNormal);
+  float nx = fbm(uv + vec2(0.1, 0.0)) - fbm(uv - vec2(0.1, 0.0));
+  float ny = fbm(uv + vec2(0.0, 0.1)) - fbm(uv - vec2(0.0, 0.1));
+  normal = normalize(normal + vec3(nx, ny, 0.0) * 0.4);
+
+  // Lighting
+  vec3 lightDir = normalize(uLightDir + vec3(sin(uTime * 0.05) * 0.1, 0.0, 0.0));
+  float diffuse = max(dot(normal, lightDir), 0.0);
+  float ambient = 0.08;
+
+  // Rayleigh scattering halo at edges
+  float fresnel = 1.0 - max(dot(normalize(-vWorldPos), vNormal), 0.0);
+  float scatter = pow(fresnel, 3.0) * 0.15;
+  vec3 scatterColor = vec3(0.3, 0.4, 0.55);
+
+  vec3 baseColor = vec3(0.72, 0.72, 0.78) * albedo;
+  vec3 color = baseColor * (ambient + diffuse * 0.9) + scatterColor * scatter;
+
+  gl_FragColor = vec4(color, 1.0);
+}
+`;
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -39,46 +197,42 @@ type ConcertPhase =
    Waits for WebGL context before mounting EffectComposer
    ═══════════════════════════════════════════════════════ */
 
-function PostProcessing() {
+function PostProcessingFull() {
   const { gl } = useThree();
   const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (gl) setReady(true);
-  }, [gl]);
-
+  useEffect(() => { if (gl) setReady(true); }, [gl]);
   if (!ready) return null;
-
   return (
     <EffectComposer enableNormalPass>
-      <N8AO
-        aoRadius={0.8}
-        intensity={2}
-        aoSamples={16}
-        denoiseSamples={4}
-        denoiseRadius={12}
-        distanceFalloff={1.5}
-        halfRes
-      />
-      <Bloom
-        luminanceThreshold={0.3}
-        mipmapBlur
-        intensity={2.5}
-        radius={0.85}
-      />
-      <DepthOfField
-        focusDistance={0.012}
-        focalLength={0.06}
-        bokehScale={3}
-      />
-      <ChromaticAberration
-        blendFunction={BlendFunction.NORMAL}
-        offset={new THREE.Vector2(0.0006, 0.0006)}
-      />
-      <Vignette eskil={false} offset={0.05} darkness={1.4} />
+      <N8AO aoRadius={1.0} intensity={2.5} aoSamples={16} denoiseSamples={4} denoiseRadius={12} distanceFalloff={2.0} halfRes />
+      <Bloom luminanceThreshold={0.18} mipmapBlur intensity={4} radius={0.9} />
+      <DepthOfField focusDistance={0.012} focalLength={0.06} bokehScale={3.5} />
+      <ChromaticAberration blendFunction={BlendFunction.NORMAL} offset={new THREE.Vector2(0.001, 0.001)} />
+      <Vignette eskil={false} offset={0.02} darkness={1.6} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
     </EffectComposer>
   );
+}
+
+function PostProcessingMid() {
+  const { gl } = useThree();
+  const [ready, setReady] = useState(false);
+  useEffect(() => { if (gl) setReady(true); }, [gl]);
+  if (!ready) return null;
+  return (
+    <EffectComposer>
+      <Bloom luminanceThreshold={0.22} mipmapBlur intensity={2.5} radius={0.85} />
+      <Vignette eskil={false} offset={0.03} darkness={1.5} />
+      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+    </EffectComposer>
+  );
+}
+
+function TieredPostProcessing() {
+  const tier = useTier();
+  if (tier === "LOW") return null;
+  if (tier === "MID") return <PostProcessingMid />;
+  return <PostProcessingFull />;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -86,9 +240,15 @@ function PostProcessing() {
    ═══════════════════════════════════════════════════════ */
 
 function MassiveMoon() {
+  const tier = useTier();
   const moonRef = useRef<THREE.Mesh>(null);
   const ringsRef = useRef<THREE.Group>(null);
   const haloRef = useRef<THREE.Mesh>(null);
+
+  const shaderUniforms = useMemo(() => ({
+    uTime: { value: 0 },
+    uLightDir: { value: new THREE.Vector3(0.5, 0.8, 0.3) },
+  }), []);
 
   useFrame((s) => {
     const t = s.clock.elapsedTime;
@@ -98,40 +258,58 @@ function MassiveMoon() {
       (haloRef.current.material as THREE.MeshBasicMaterial).opacity =
         0.035 + Math.sin(t * 0.5) * 0.015;
     }
+    shaderUniforms.uTime.value = t;
   });
+
+  const segments = TIER_CONFIG[tier].moonSegments;
 
   return (
     <group>
       <mesh ref={moonRef} position={[0, 22, -70]}>
-        <sphereGeometry args={[35, 128, 128]} />
-        <meshStandardMaterial
-          color="#b8b8c8"
-          roughness={0.95}
-          metalness={0.05}
-          emissive="#0a0a1a"
-          emissiveIntensity={0.15}
-        />
+        <sphereGeometry args={[35, segments, segments]} />
+        {tier === "HIGH" ? (
+          <shaderMaterial
+            vertexShader={MOON_VERTEX}
+            fragmentShader={MOON_FRAGMENT}
+            uniforms={shaderUniforms}
+          />
+        ) : tier === "LOW" ? (
+          <meshBasicMaterial
+            color="#aaaabc"
+            toneMapped={false}
+          />
+        ) : (
+          <meshStandardMaterial
+            color="#b8b8c8"
+            roughness={0.95}
+            metalness={0.05}
+            emissive="#0a0a1a"
+            emissiveIntensity={0.15}
+          />
+        )}
       </mesh>
       <mesh ref={haloRef} position={[0, 22, -71]}>
-        <sphereGeometry args={[37, 64, 64]} />
+        <sphereGeometry args={[37, segments, segments]} />
         <meshBasicMaterial color="#4488cc" transparent opacity={0.04} side={THREE.BackSide} />
       </mesh>
       <mesh position={[0, 22, -72]}>
         <sphereGeometry args={[40, 32, 32]} />
         <meshBasicMaterial color="#00ffcc" transparent opacity={0.012} side={THREE.BackSide} />
       </mesh>
-      <group ref={ringsRef} position={[0, 22, -70]}>
-        {[
-          { radius: 40, thickness: 0.04, color: "#00ffcc", opacity: 0.1, rotX: Math.PI / 2.2, rotY: 0.2 },
-          { radius: 42, thickness: 0.025, color: "#ff00ff", opacity: 0.05, rotX: Math.PI / 2.5, rotY: -0.3 },
-          { radius: 44, thickness: 0.015, color: "#ffd700", opacity: 0.03, rotX: Math.PI / 3, rotY: 0.5 },
-        ].map((ring, i) => (
-          <mesh key={i} rotation={[ring.rotX, ring.rotY, i * 0.2]}>
-            <torusGeometry args={[ring.radius, ring.thickness, 8, 256]} />
-            <meshBasicMaterial color={ring.color} transparent opacity={ring.opacity} />
-          </mesh>
-        ))}
-      </group>
+      {tier !== "LOW" && (
+        <group ref={ringsRef} position={[0, 22, -70]}>
+          {[
+            { radius: 40, thickness: 0.04, color: "#00ffcc", opacity: 0.1, rotX: Math.PI / 2.2, rotY: 0.2 },
+            { radius: 42, thickness: 0.025, color: "#ff00ff", opacity: 0.05, rotX: Math.PI / 2.5, rotY: -0.3 },
+            { radius: 44, thickness: 0.015, color: "#ffd700", opacity: 0.03, rotX: Math.PI / 3, rotY: 0.5 },
+          ].map((ring, i) => (
+            <mesh key={i} rotation={[ring.rotX, ring.rotY, i * 0.2]}>
+              <torusGeometry args={[ring.radius, ring.thickness, 8, tier === "HIGH" ? 256 : 128]} />
+              <meshBasicMaterial color={ring.color} transparent opacity={ring.opacity} />
+            </mesh>
+          ))}
+        </group>
+      )}
     </group>
   );
 }
@@ -141,6 +319,8 @@ function MassiveMoon() {
    ═══════════════════════════════════════════════════════ */
 
 function HolographicStage() {
+  const tier = useTier();
+  const cfg = TIER_CONFIG[tier];
   const pulseRef = useRef<THREE.Mesh>(null);
   const scanRef = useRef<THREE.Mesh>(null);
 
@@ -160,37 +340,46 @@ function HolographicStage() {
     }
   });
 
+  const gridCount = cfg.gridLines;
+  const floorSegments = tier === "LOW" ? 32 : 128;
+
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-        <circleGeometry args={[18, 128]} />
-        <meshStandardMaterial color="#040408" roughness={0.03} metalness={0.98} envMapIntensity={0.5} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow={tier !== "LOW"}>
+        <circleGeometry args={[18, floorSegments]} />
+        {tier === "LOW" ? (
+          <meshBasicMaterial color="#040408" />
+        ) : (
+          <meshStandardMaterial color="#040408" roughness={0.03} metalness={0.98} envMapIntensity={0.5} />
+        )}
       </mesh>
-      {Array.from({ length: 16 }).map((_, i) => (
+      {tier !== "LOW" && Array.from({ length: gridCount }).map((_, i) => (
         <group key={`grid-${i}`}>
-          <mesh position={[0, 0.004, -10 + i * 1.3]} rotation={[-Math.PI / 2, 0, 0]}>
+          <mesh position={[0, 0.004, -10 + i * (20 / gridCount)]} rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[36, 0.006]} />
             <meshBasicMaterial color="#00ffcc" transparent opacity={0.035} />
           </mesh>
-          <mesh position={[-10 + i * 1.3, 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <mesh position={[-10 + i * (20 / gridCount), 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[0.006, 36]} />
             <meshBasicMaterial color="#00ffcc" transparent opacity={0.035} />
           </mesh>
         </group>
       ))}
-      <mesh ref={scanRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 0]}>
-        <planeGeometry args={[36, 0.15]} />
-        <meshBasicMaterial color="#00ffcc" transparent opacity={0.06} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </mesh>
+      {tier !== "LOW" && (
+        <mesh ref={scanRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 0]}>
+          <planeGeometry args={[36, 0.15]} />
+          <meshBasicMaterial color="#00ffcc" transparent opacity={0.06} blending={THREE.AdditiveBlending} depthWrite={false} />
+        </mesh>
+      )}
       <mesh ref={pulseRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <ringGeometry args={[17.4, 18, 128]} />
+        <ringGeometry args={[17.4, 18, tier === "LOW" ? 32 : 128]} />
         <meshBasicMaterial color="#00ffcc" transparent opacity={0.6} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <ringGeometry args={[5.2, 5.5, 64]} />
+        <ringGeometry args={[5.2, 5.5, tier === "LOW" ? 16 : 64]} />
         <meshBasicMaterial color="#ff00ff" transparent opacity={0.25} />
       </mesh>
-      {Array.from({ length: 12 }).map((_, i) => {
+      {tier === "HIGH" && Array.from({ length: 12 }).map((_, i) => {
         const a = (i / 12) * Math.PI * 2;
         return (
           <mesh key={`hex-${i}`} rotation={[-Math.PI / 2, 0, a]} position={[Math.sin(a) * 14, 0.008, Math.cos(a) * 14]}>
@@ -315,12 +504,15 @@ function EQBar({ index, position }: { index: number; position: [number, number, 
 */
 
 function DJStarAvatar() {
+  const tier = useTier();
+  const cfg = TIER_CONFIG[tier];
   const groupRef = useRef<THREE.Group>(null);
   const leftArmRef = useRef<THREE.Group>(null);
   const rightArmRef = useRef<THREE.Group>(null);
   const braidsRef = useRef<THREE.Group>(null);
   const headRef = useRef<THREE.Group>(null);
   const glowRef = useRef<THREE.Mesh>(null);
+  const djGradientMap = useMemo(() => getGradientMap(), []);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
@@ -354,9 +546,11 @@ function DJStarAvatar() {
     }
   });
 
+  const braidCount = cfg.braidCount;
   const braids = useMemo(() => {
-    return Array.from({ length: 36 }).map((_, i) => {
-      const angle = (i / 36) * Math.PI * 2;
+    if (braidCount === 0) return [];
+    return Array.from({ length: braidCount }).map((_, i) => {
+      const angle = (i / braidCount) * Math.PI * 2;
       if (Math.cos(angle) > 0.5) return null;
       const len = 0.25 + (((i * 7 + 13) % 17) / 17) * 0.32;
       const hasBead = i % 3 === 0;
@@ -365,7 +559,7 @@ function DJStarAvatar() {
       const swayOffset = ((i * 11 + 5) % 13) / 13;
       return { angle, len, hasBead, isCyan, hasRing, swayOffset, i };
     }).filter(Boolean);
-  }, []);
+  }, [braidCount]);
 
   return (
     <Float speed={0.3} rotationIntensity={0} floatIntensity={0.2}>
@@ -373,7 +567,7 @@ function DJStarAvatar() {
         {/* Torso with glowing jacket */}
         <mesh position={[0, 1.15, 0]} castShadow>
           <capsuleGeometry args={[0.26, 0.54, 16, 32]} />
-          <meshStandardMaterial color="#080818" roughness={0.2} metalness={0.88} />
+          <meshToonMaterial color="#0c0c20" gradientMap={djGradientMap} />
         </mesh>
         <mesh position={[0, 1.15, 0.22]}>
           <capsuleGeometry args={[0.24, 0.5, 8, 16]} />
@@ -389,20 +583,20 @@ function DJStarAvatar() {
         {/* Neck */}
         <mesh position={[0, 1.54, 0]}>
           <cylinderGeometry args={[0.06, 0.085, 0.14]} />
-          <meshStandardMaterial color="#2d1610" roughness={0.5} />
+          <meshToonMaterial color="#2d1610" gradientMap={djGradientMap} />
         </mesh>
 
         {/* Head */}
         <group ref={headRef} position={[0, 1.72, 0]}>
           <mesh castShadow>
             <sphereGeometry args={[0.21, 32, 32]} />
-            <meshStandardMaterial color="#2d1610" roughness={0.45} metalness={0.05} />
+            <meshToonMaterial color="#2d1610" gradientMap={djGradientMap} />
           </mesh>
           {[-1, 1].map((side) => (
             <group key={`eye-${side}`}>
               <mesh position={[side * 0.068, 0.02, 0.18]}>
                 <sphereGeometry args={[0.028, 16, 16]} />
-                <meshStandardMaterial color="#1a0a05" roughness={0.25} />
+                <meshBasicMaterial color="#1a0a05" />
               </mesh>
               <mesh position={[side * 0.063, 0.027, 0.2]}>
                 <sphereGeometry args={[0.01, 8, 8]} />
@@ -412,11 +606,11 @@ function DJStarAvatar() {
           ))}
           <mesh position={[0, -0.07, 0.17]}>
             <sphereGeometry args={[0.044, 16, 8]} />
-            <meshStandardMaterial color="#6b2a3a" roughness={0.3} />
+            <meshBasicMaterial color="#6b2a3a" />
           </mesh>
           <mesh position={[0, -0.01, 0.19]}>
             <sphereGeometry args={[0.024, 8, 8]} />
-            <meshStandardMaterial color="#321a10" roughness={0.45} />
+            <meshToonMaterial color="#321a10" gradientMap={djGradientMap} />
           </mesh>
 
           {/* Neon headphones */}
@@ -444,27 +638,35 @@ function DJStarAvatar() {
               return (
                 <group key={b.i} position={[Math.sin(b.angle) * 0.19, -0.1, Math.cos(b.angle) * 0.17]} rotation={[0.15 + b.swayOffset * 0.12, 0, b.angle * 0.2]}>
                   <mesh>
-                    <cylinderGeometry args={[0.016, 0.007, b.len, 8]} />
-                    <meshStandardMaterial color={b.isCyan ? "#00ccaa" : "#050505"} roughness={0.85} />
+                    <cylinderGeometry args={[0.016, 0.007, b.len, tier === "HIGH" ? 8 : 4]} />
+                    {tier === "MID" ? (
+                      <meshBasicMaterial color={b.isCyan ? "#00ccaa" : "#050505"} />
+                    ) : (
+                      <meshToonMaterial color={b.isCyan ? "#00ccaa" : "#050505"} gradientMap={djGradientMap} />
+                    )}
                   </mesh>
-                  {b.hasBead && (
+                  {b.hasBead && tier === "HIGH" && (
                     <mesh position={[0, -b.len * 0.38, 0]}>
                       <sphereGeometry args={[0.022, 8, 8]} />
-                      <meshStandardMaterial color="#ffd700" metalness={1} roughness={0.05} emissive="#ffa500" emissiveIntensity={0.4} />
+                      <meshBasicMaterial color="#ffd700" />
                     </mesh>
                   )}
-                  {b.hasRing && (
+                  {b.hasRing && tier === "HIGH" && (
                     <mesh position={[0, -b.len * 0.22, 0]}>
                       <torusGeometry args={[0.019, 0.005, 6, 12]} />
-                      <meshStandardMaterial color="#c0c0c0" metalness={0.95} roughness={0.08} />
+                      <meshBasicMaterial color="#c0c0c0" />
                     </mesh>
                   )}
                 </group>
               );
             })}
             <mesh position={[0, 0.14, -0.04]}>
-              <sphereGeometry args={[0.12, 16, 16]} />
-              <meshStandardMaterial color="#050505" roughness={0.92} />
+              <sphereGeometry args={[0.12, tier === "LOW" ? 8 : 16, tier === "LOW" ? 8 : 16]} />
+              {tier === "LOW" ? (
+                <meshBasicMaterial color="#050505" />
+              ) : (
+                <meshToonMaterial color="#050505" gradientMap={djGradientMap} />
+              )}
             </mesh>
           </group>
         </group>
@@ -472,20 +674,20 @@ function DJStarAvatar() {
         {/* Golden choker */}
         <mesh position={[0, 1.5, 0]}>
           <torusGeometry args={[0.095, 0.015, 8, 32]} />
-          <meshStandardMaterial color="#ffd700" metalness={1} roughness={0.03} emissive="#ffa500" emissiveIntensity={0.2} />
+          <meshBasicMaterial color="#ffd700" />
         </mesh>
 
         {/* Arms */}
         <group ref={leftArmRef} position={[-0.36, 1.32, 0]}>
           <mesh position={[0, -0.24, 0.14]} rotation={[-0.3, 0, 0.12]}>
             <capsuleGeometry args={[0.06, 0.44, 8, 8]} />
-            <meshStandardMaterial color="#2d1610" roughness={0.5} />
+            <meshToonMaterial color="#2d1610" gradientMap={djGradientMap} />
           </mesh>
         </group>
         <group ref={rightArmRef} position={[0.36, 1.32, 0]}>
           <mesh position={[0, -0.24, 0.14]} rotation={[-0.3, 0, -0.12]}>
             <capsuleGeometry args={[0.06, 0.44, 8, 8]} />
-            <meshStandardMaterial color="#2d1610" roughness={0.5} />
+            <meshToonMaterial color="#2d1610" gradientMap={djGradientMap} />
           </mesh>
         </group>
 
@@ -494,7 +696,7 @@ function DJStarAvatar() {
           <group key={`leg-${side}`}>
             <mesh position={[side * 0.12, 0.48, 0]} castShadow>
               <capsuleGeometry args={[0.078, 0.6, 8, 8]} />
-              <meshStandardMaterial color="#080814" roughness={0.75} />
+              <meshToonMaterial color="#080814" gradientMap={djGradientMap} />
             </mesh>
             <mesh position={[side * 0.12, 0.13, 0.045]}>
               <boxGeometry args={[0.12, 0.045, 0.18]} />
@@ -764,6 +966,7 @@ function GuestArtistAvatar({ name, active, position: targetPos, skinColor, shirt
   const glowRef = useRef<THREE.Mesh>(null);
   const spotRef = useRef<THREE.Mesh>(null);
   const startTime = useRef<number | null>(null);
+  const guestGradientMap = useMemo(() => getGradientMap(), []);
 
   useFrame((s) => {
     const t = s.clock.elapsedTime;
@@ -823,60 +1026,60 @@ function GuestArtistAvatar({ name, active, position: targetPos, skinColor, shirt
       {/* Body */}
       <mesh position={[0, 1.15, 0]} castShadow>
         <capsuleGeometry args={[0.26, 0.54, 16, 32]} />
-        <meshStandardMaterial color={shirtColor} roughness={0.3} metalness={0.5} />
+        <meshToonMaterial color={shirtColor} gradientMap={guestGradientMap} />
       </mesh>
 
       {/* Head */}
       <mesh position={[0, 1.72, 0]} castShadow>
         <sphereGeometry args={[0.2, 32, 32]} />
-        <meshStandardMaterial color={skinColor} roughness={0.45} metalness={0.05} />
+        <meshToonMaterial color={skinColor} gradientMap={guestGradientMap} />
       </mesh>
 
       {/* Eyes */}
       {[-1, 1].map((side) => (
         <mesh key={`eye-${side}`} position={[side * 0.065, 1.74, 0.17]}>
           <sphereGeometry args={[0.025, 16, 16]} />
-          <meshStandardMaterial color="#1a0a05" roughness={0.25} />
+          <meshBasicMaterial color="#1a0a05" />
         </mesh>
       ))}
 
       {/* Hair — short style */}
       <mesh position={[0, 1.85, -0.02]}>
         <sphereGeometry args={[0.18, 16, 16]} />
-        <meshStandardMaterial color="#050505" roughness={0.92} />
+        <meshToonMaterial color="#050505" gradientMap={guestGradientMap} />
       </mesh>
 
       {/* Neck */}
       <mesh position={[0, 1.54, 0]}>
         <cylinderGeometry args={[0.06, 0.085, 0.14]} />
-        <meshStandardMaterial color={skinColor} roughness={0.5} />
+        <meshToonMaterial color={skinColor} gradientMap={guestGradientMap} />
       </mesh>
 
       {/* Arms */}
       <mesh position={[-0.36, 1.2, 0.06]} rotation={[-0.3, 0, 0.4]}>
         <capsuleGeometry args={[0.055, 0.42, 8, 8]} />
-        <meshStandardMaterial color={skinColor} roughness={0.45} />
+        <meshToonMaterial color={skinColor} gradientMap={guestGradientMap} />
       </mesh>
       <mesh position={[0.36, 1.2, 0.06]} rotation={[-0.3, 0, -0.4]}>
         <capsuleGeometry args={[0.055, 0.42, 8, 8]} />
-        <meshStandardMaterial color={skinColor} roughness={0.45} />
+        <meshToonMaterial color={skinColor} gradientMap={guestGradientMap} />
       </mesh>
 
       {/* Microphone in hand */}
       <mesh position={[0.38, 1.55, 0.18]} rotation={[-0.8, 0, -0.3]}>
         <cylinderGeometry args={[0.012, 0.012, 0.18, 8]} />
-        <meshStandardMaterial color="#333333" metalness={0.9} roughness={0.1} />
+        <meshBasicMaterial color="#555555" />
       </mesh>
       <mesh position={[0.37, 1.63, 0.22]} rotation={[-0.8, 0, -0.3]}>
         <sphereGeometry args={[0.025, 16, 16]} />
-        <meshStandardMaterial color="#444444" metalness={0.8} roughness={0.2} />
+        <meshBasicMaterial color="#666666" />
       </mesh>
 
       {/* Legs */}
       {[-1, 1].map((side) => (
         <mesh key={`leg-${side}`} position={[side * 0.12, 0.48, 0]} castShadow>
           <capsuleGeometry args={[0.078, 0.6, 8, 8]} />
-          <meshStandardMaterial color="#0a0a14" roughness={0.75} />
+          <meshToonMaterial color="#0a0a14" gradientMap={guestGradientMap} />
         </mesh>
       ))}
 
@@ -891,7 +1094,7 @@ function GuestArtistAvatar({ name, active, position: targetPos, skinColor, shirt
       {/* Accessory: chain */}
       <mesh position={[0, 1.5, 0.12]}>
         <torusGeometry args={[0.06, 0.008, 6, 16]} />
-        <meshStandardMaterial color="#ffd700" metalness={1} roughness={0.04} emissive="#ffa500" emissiveIntensity={0.3} />
+        <meshBasicMaterial color="#ffd700" />
       </mesh>
 
       {/* Name tag */}
@@ -907,216 +1110,18 @@ function GuestArtistAvatar({ name, active, position: targetPos, skinColor, shirt
   );
 }
 
-/* ═══════════════════════════════════════════════════════
-   AUDIENCE — cinematic entrance
-   ═══════════════════════════════════════════════════════ */
+/* Audience and UserAvatar are now imported from separate modules */
 
-const SKIN_TONES = ["#8d5524", "#c68642", "#e0ac69", "#f1c27d", "#ffdbac", "#3b2219", "#4a2c14", "#291711"];
-const SHIRT_COLORS = ["#ff0055", "#00ffcc", "#ffffff", "#1a1a1a", "#ffcc00", "#8b5cf6", "#3b82f6", "#ef4444", "#ec4899", "#10b981"];
-const FLAGS = ["PT", "CV", "GW", "BR", "MZ", "AO", "ST", "TL"];
-const NAMES = ["Luna", "DJ_Neon", "Estrela", "Cosmic", "Afro_Beat", "VIP_Star", "MoonWalker", "BassHead", "Melodia", "Ritmo", "Groove", "Vibe", "Pulse", "Flow", "Wave"];
-
-function AudienceAvatar({
-  delay, target, shirt, skin, flag, name, idx,
-}: {
-  delay: number; target: [number, number, number]; shirt: string; skin: string; flag: string; name: string; idx: number;
-}) {
-  const ref = useRef<THREE.Group>(null);
-  const armLRef = useRef<THREE.Mesh>(null);
-  const armRRef = useRef<THREE.Mesh>(null);
-
-  useFrame((s) => {
-    const t = s.clock.elapsedTime;
-    if (!ref.current) return;
-    if (t < delay) { ref.current.visible = false; return; }
-    ref.current.visible = true;
-    const at = t - delay;
-    const [tx, ty, tz] = target;
-    const side = tx < 0 ? -1 : 1;
-    const startX = side * 22;
-    const prog = Math.min(at * 0.28, 1);
-    const ease = 1 - Math.pow(1 - prog, 3);
-
-    if (prog < 1) {
-      ref.current.position.set(startX + (tx - startX) * ease, ty + Math.sin(at * 12) * 0.04, tz);
-      ref.current.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
-    } else {
-      ref.current.position.set(tx, ty + Math.sin(t * 3.5 + idx * 0.5) * 0.14, tz);
-      const faceAngle = Math.atan2(-tx, -(tz + 3));
-      ref.current.rotation.y += (faceAngle - ref.current.rotation.y) * 0.05;
-      ref.current.rotation.z = Math.sin(t * 2.5 + idx) * 0.1;
-    }
-    if (armLRef.current && prog >= 1) {
-      armLRef.current.rotation.x = Math.sin(t * 4.2 + idx) * 0.5 + 0.3;
-      armLRef.current.rotation.z = Math.sin(t * 2 + idx) * 0.2 + 0.5;
-    }
-    if (armRRef.current && prog >= 1) {
-      armRRef.current.rotation.x = Math.sin(t * 3.8 + idx + 1) * 0.5 + 0.3;
-      armRRef.current.rotation.z = Math.sin(t * 2.3 + idx + 1) * -0.2 - 0.5;
-    }
-  });
-
-  return (
-    <group ref={ref}>
-      <mesh castShadow position={[0, 0.42, 0]}>
-        <capsuleGeometry args={[0.15, 0.34, 8, 16]} />
-        <meshStandardMaterial color={shirt} roughness={0.6} />
-      </mesh>
-      <mesh position={[0, 0.85, 0]} castShadow>
-        <sphereGeometry args={[0.14, 16, 16]} />
-        <meshStandardMaterial color={skin} roughness={0.45} />
-      </mesh>
-      <mesh ref={armLRef} position={[-0.22, 0.62, 0.06]} rotation={[0.3, 0, 0.5]}>
-        <capsuleGeometry args={[0.042, 0.3, 4, 8]} />
-        <meshStandardMaterial color={skin} roughness={0.45} />
-      </mesh>
-      <mesh ref={armRRef} position={[0.22, 0.62, 0.06]} rotation={[0.3, 0, -0.5]}>
-        <capsuleGeometry args={[0.042, 0.3, 4, 8]} />
-        <meshStandardMaterial color={skin} roughness={0.45} />
-      </mesh>
-      <mesh position={[-0.07, 0.1, 0]}>
-        <capsuleGeometry args={[0.042, 0.22, 4, 8]} />
-        <meshStandardMaterial color="#1f2937" />
-      </mesh>
-      <mesh position={[0.07, 0.1, 0]}>
-        <capsuleGeometry args={[0.042, 0.22, 4, 8]} />
-        <meshStandardMaterial color="#1f2937" />
-      </mesh>
-      <mesh position={[0.23, 0.82, 0.08]} rotation={[0.5, 0, -0.8]}>
-        <cylinderGeometry args={[0.008, 0.008, 0.16, 8]} />
-        <meshBasicMaterial color={idx % 2 === 0 ? "#00ffcc" : "#ff00ff"} />
-      </mesh>
-      <Billboard position={[0, 1.2, 0]}>
-        <Text fontSize={0.055} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.007} outlineColor="#000000">
-          {`[${flag}] ${name}`}
-        </Text>
-      </Billboard>
-    </group>
-  );
-}
-
-function AudienceCrowd({ viewerCount }: { viewerCount: number }) {
-  const avatars = useMemo(() => {
-    const count = Math.min(Math.max(viewerCount * 2, 16), 45);
-    const result = [];
-    for (let i = 0; i < count; i++) {
-      const row = Math.floor(i / 12);
-      const col = i % 12;
-      const totalInRow = Math.min(12, count - row * 12);
-      const angle = ((col - (totalInRow - 1) / 2) / totalInRow) * Math.PI * 0.9 +
-        (((i * 7 + 3) % 11) / 11) * 0.06;
-      const radius = 5.5 + row * 1.9 + (((i * 13 + 5) % 9) / 9) * 0.6;
-      result.push({
-        target: [Math.sin(angle) * radius, 0, Math.cos(angle) * radius - 2] as [number, number, number],
-        delay: 1.5 + (((i * 17 + 7) % 23) / 23) * 9,
-        shirt: SHIRT_COLORS[i % SHIRT_COLORS.length],
-        skin: SKIN_TONES[i % SKIN_TONES.length],
-        flag: FLAGS[i % FLAGS.length],
-        name: NAMES[i % NAMES.length] + `_${i}`,
-        idx: i,
-      });
-    }
-    return result;
-  }, [viewerCount]);
-
-  return (
-    <group>
-      {avatars.map((a, i) => <AudienceAvatar key={i} {...a} />)}
-    </group>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════
-   CINEMATIC LIGHTING — concert + volumetric lasers
-   ═══════════════════════════════════════════════════════ */
-
-function CinematicLighting({ phase }: { phase: ConcertPhase }) {
-  const lasersRef = useRef<THREE.Group>(null);
-  const strobeRef = useRef<THREE.PointLight>(null);
-  const sweepRef = useRef<THREE.Group>(null);
-
-  /* Intensity multiplier per phase */
-  const intensity = phase === "dua2_presentation" ? 1.5 :
-    phase === "estraca_performance" ? 1.8 : 1;
-
-  useFrame((s) => {
-    const t = s.clock.elapsedTime;
-    if (lasersRef.current) lasersRef.current.rotation.y = t * 0.1;
-    if (sweepRef.current) sweepRef.current.rotation.y = Math.sin(t * 0.4) * 0.8;
-    if (strobeRef.current) {
-      strobeRef.current.intensity = Math.sin(t * 20) > 0.94 ? 10 * intensity : 0;
-    }
-  });
-
-  return (
-    <>
-      <ambientLight intensity={0.1} color="#060612" />
-      <directionalLight position={[0, 28, -55]} intensity={0.3} color="#7788aa" />
-
-      {/* Main DJ spotlight */}
-      <spotLight
-        position={[0, 14, 4]}
-        angle={0.28}
-        penumbra={0.9}
-        intensity={6 * intensity}
-        color="#00ffcc"
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-      />
-      <spotLight position={[-4, 11, 0]} angle={0.4} penumbra={0.75} intensity={4 * intensity} color="#ff00ff" />
-      <spotLight position={[4, 11, 0]} angle={0.4} penumbra={0.75} intensity={4 * intensity} color="#2244ff" />
-      <spotLight position={[0, 9, -9]} angle={0.55} penumbra={0.9} intensity={2.5} color="#ffd700" />
-      <spotLight position={[0, 5, -6]} angle={0.8} penumbra={1} intensity={1.5} color="#8844ff" />
-
-      {/* Strobe */}
-      <pointLight ref={strobeRef} position={[0, 7, -2]} intensity={0} color="#ffffff" />
-
-      {/* Sweeping spotlight */}
-      <group ref={sweepRef} position={[0, 12, -3]}>
-        <spotLight position={[0, 0, 0]} target-position={[0, -12, 5]} angle={0.15} penumbra={0.5} intensity={3 * intensity} color="#00ffcc" />
-      </group>
-
-      {/* Laser cones */}
-      <group ref={lasersRef} position={[0, 8, -3]}>
-        {Array.from({ length: 10 }).map((_, i) => {
-          const a = (i / 10) * Math.PI * 2;
-          const colors = ["#00ffcc", "#ff00ff", "#2244ff", "#ffd700", "#ff0055"];
-          return (
-            <mesh key={i} rotation={[Math.PI / 3, 0, a]} position={[Math.sin(a) * 1.2, -3, Math.cos(a) * 1.2]}>
-              <cylinderGeometry args={[0.008, 2.5, 24, 16, 1, true]} />
-              <meshBasicMaterial color={colors[i % colors.length]} transparent opacity={0.025} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
-            </mesh>
-          );
-        })}
-      </group>
-
-      {/* God-ray planes */}
-      {[-2, -0.5, 0.5, 2].map((x, i) => (
-        <mesh key={`godray-${i}`} position={[x * 2, 6, -8]} rotation={[0.12, 0, x * 0.15]}>
-          <planeGeometry args={[0.35, 16]} />
-          <meshBasicMaterial color={i % 2 === 0 ? "#00ffcc" : "#8844ff"} transparent opacity={0.01} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
-        </mesh>
-      ))}
-
-      {/* Extra guest performance spotlights */}
-      {(phase === "vado_performance" || phase === "uzzy_performance" || phase === "estraca_performance") && (
-        <>
-          <spotLight position={[-6, 12, 2]} angle={0.2} penumbra={0.8} intensity={8} color={phase === "vado_performance" ? "#ff4400" : phase === "uzzy_performance" ? "#4488ff" : "#ffd700"} />
-          <spotLight position={[6, 12, 2]} angle={0.2} penumbra={0.8} intensity={8} color="#ff00ff" />
-        </>
-      )}
-    </>
-  );
-}
+/* CinematicLighting replaced by imported ConcertLighting */
 
 /* ═══════════════════════════════════════════════════════
    FLOATING PARTICLES
    ═══════════════════════════════════════════════════════ */
 
 function FloatingParticles() {
+  const tier = useTier();
   const ref = useRef<THREE.Points>(null);
-  const count = 300;
+  const count = TIER_CONFIG[tier].particleCount;
 
   const positions = useMemo(() => {
     const arr = new Float32Array(count * 3);
@@ -1126,17 +1131,21 @@ function FloatingParticles() {
       arr[i * 3 + 2] = (Math.random() - 0.5) * 35 - 5;
     }
     return arr;
-  }, []);
+  }, [count]);
 
   useFrame((s) => {
-    if (ref.current) {
-      ref.current.rotation.y = s.clock.elapsedTime * 0.012;
+    if (!ref.current) return;
+    ref.current.rotation.y = s.clock.elapsedTime * 0.012;
+    if (tier === "HIGH") {
       const pos = ref.current.geometry.attributes.position;
-      for (let i = 0; i < count; i++) {
-        const y = pos.getY(i);
-        pos.setY(i, y + Math.sin(s.clock.elapsedTime * 0.5 + i * 0.7) * 0.002);
+      if (pos) {
+        const t = s.clock.elapsedTime;
+        for (let i = 0; i < Math.min(count, 500); i++) {
+          const idx = i * 3;
+          pos.array[idx + 1] += Math.sin(t * 2 + i * 0.1) * 0.001;
+        }
+        pos.needsUpdate = true;
       }
-      pos.needsUpdate = true;
     }
   });
 
@@ -1145,7 +1154,15 @@ function FloatingParticles() {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial size={0.055} color="#00ffcc" transparent opacity={0.35} blending={THREE.AdditiveBlending} depthWrite={false} sizeAttenuation />
+      <pointsMaterial
+        size={tier === "HIGH" ? 0.04 : tier === "MID" ? 0.055 : 0.08}
+        color="#00ffcc"
+        transparent
+        opacity={tier === "LOW" ? 0.5 : 0.35}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        sizeAttenuation
+      />
     </points>
   );
 }
@@ -1157,10 +1174,20 @@ function FloatingParticles() {
 export default function MoonScene({
   viewerCount = 10,
   concertPhase = "opening" as ConcertPhase,
+  userProfile,
+  audienceUsers = [],
 }: {
   viewerCount?: number;
   concertPhase?: ConcertPhase;
+  userProfile?: UserProfile | null;
+  audienceUsers?: UserProfile[];
 }) {
+  const tier = useMemo(() => {
+    if (typeof window === "undefined") return "MID" as DeviceTier;
+    return getDeviceProfile().tier;
+  }, []);
+
+  const config = TIER_CONFIG[tier];
   const showDUA2Screen = concertPhase === "dua2_presentation" || concertPhase === "finale";
   const showVado = concertPhase === "vado_performance" || concertPhase === "finale";
   const showUzzy = concertPhase === "uzzy_performance" || concertPhase === "finale";
@@ -1169,86 +1196,105 @@ export default function MoonScene({
   return (
     <div className="absolute inset-0 w-full h-full bg-[#030305]">
       <Canvas
-        shadows
+        shadows={config.shadows}
+        dpr={config.dprRange}
         camera={{ position: [0, 3.5, 9], fov: 52, near: 0.1, far: 350 }}
         gl={{
-          antialias: true,
+          antialias: config.antialias,
           alpha: false,
-          powerPreference: "high-performance",
+          powerPreference: tier === "LOW" ? "low-power" : "high-performance",
           stencil: false,
           depth: true,
         }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
-          gl.toneMappingExposure = 1.05;
-          gl.shadowMap.type = THREE.PCFSoftShadowMap;
+          gl.toneMappingExposure = 1.15;
+          if (config.shadows) gl.shadowMap.type = THREE.PCFSoftShadowMap;
         }}
       >
         <color attach="background" args={["#030305"]} />
         <fog attach="fog" args={["#030305", 12, 60]} />
 
-        <Suspense fallback={null}>
-          <MassiveMoon />
+        <TierContext.Provider value={tier}>
+          <Suspense fallback={null}>
+            <MassiveMoon />
 
-          <Stars radius={140} depth={80} count={8000} factor={5.5} saturation={0.12} fade speed={0.5} />
-          <Sparkles count={400} scale={20} size={2} speed={0.25} opacity={0.18} color="#00ffcc" />
-          <Sparkles count={180} scale={16} size={3} speed={0.15} opacity={0.1} color="#ff00ff" />
-          <Sparkles count={80} scale={12} size={1.5} speed={0.3} opacity={0.08} color="#ffd700" />
+            <Stars radius={140} depth={80} count={config.starCount} factor={5.5} saturation={0.12} fade speed={0.5} />
+            <Sparkles count={config.sparklesCyan} scale={20} size={2} speed={0.25} opacity={0.18} color="#00ffcc" />
+            {config.sparklesMagenta > 0 && <Sparkles count={config.sparklesMagenta} scale={16} size={3} speed={0.15} opacity={0.1} color="#ff00ff" />}
+            {config.sparklesGold > 0 && <Sparkles count={config.sparklesGold} scale={12} size={1.5} speed={0.3} opacity={0.08} color="#ffd700" />}
 
-          <CinematicLighting phase={concertPhase} />
-          <HolographicStage />
-          <DJBooth />
-          <DJStarAvatar />
+            <ConcertLighting />
+            <HolographicStage />
+            <DJBooth />
+            <DJStarAvatar />
 
-          {/* DUA 2.0 Holographic Presentation Screen */}
-          <DUA2PresentationScreen active={showDUA2Screen} />
+            <DUA2PresentationScreen active={showDUA2Screen} />
 
-          {/* Guest Artist Avatars — cinematic entrances */}
-          <GuestArtistAvatar
-            name={"\uD83C\uDFA4 VADO MKA"}
-            active={showVado}
-            position={[-4, 0, -1]}
-            skinColor="#3b2219"
-            shirtColor="#ff4400"
-            accentColor="#ff6600"
-            entranceSide="left"
-          />
-          <GuestArtistAvatar
-            name={"\uD83C\uDFA4 UZZY"}
-            active={showUzzy}
-            position={[4, 0, -1]}
-            skinColor="#4a2c14"
-            shirtColor="#2244ff"
-            accentColor="#4488ff"
-            entranceSide="right"
-          />
-          <GuestArtistAvatar
-            name={"\uD83C\uDFA4 ESTRACA"}
-            active={showEstraca}
-            position={[0, 0, 1]}
-            skinColor="#291711"
-            shirtColor="#ffd700"
-            accentColor="#ffaa00"
-            entranceSide="left"
-          />
+            <GuestArtistAvatar
+              name={"VADO MKA"}
+              active={showVado}
+              position={[-4, 0, -1]}
+              skinColor="#3b2219"
+              shirtColor="#ff4400"
+              accentColor="#ff6600"
+              entranceSide="left"
+            />
+            <GuestArtistAvatar
+              name={"UZZY"}
+              active={showUzzy}
+              position={[4, 0, -1]}
+              skinColor="#4a2c14"
+              shirtColor="#2244ff"
+              accentColor="#4488ff"
+              entranceSide="right"
+            />
+            <GuestArtistAvatar
+              name={"ESTRACA"}
+              active={showEstraca}
+              position={[0, 0, 1]}
+              skinColor="#291711"
+              shirtColor="#ffd700"
+              accentColor="#ffaa00"
+              entranceSide="left"
+            />
 
-          <AudienceCrowd viewerCount={viewerCount} />
-          <FloatingParticles />
+            <AudienceCrowd
+              count={Math.max(Math.min(Math.max(viewerCount * 2, 6), config.audienceMax) - audienceUsers.length, 0)}
+              userAvatars={audienceUsers.map((audienceUser, index) => {
+                const isCurrentUser = audienceUser.id === userProfile?.id;
+                // Posicionar user atual na frente e os remotos em volta
+                const position: [number, number, number] = isCurrentUser 
+                  ? [0, -0.3, 4.5] 
+                  : [((index % 2 === 0 ? -1 : 1) * (1.8 + index * 0.4)), -0.3, 4.05 - Math.floor(index/2) * 0.5];
+                return {
+                  id: audienceUser.id,
+                  name: audienceUser.name,
+                  face: audienceUser.avatarFace ?? "A",
+                  body: audienceUser.avatarBody ?? "1",
+                  flag: getCountryFlag(audienceUser.country),
+                  isCurrentUser,
+                  position,
+                };
+              })}
+            />
+            <FloatingParticles />
 
-          <OrbitControls
-            enablePan={false}
-            maxPolarAngle={Math.PI / 2 - 0.05}
-            minDistance={2}
-            maxDistance={20}
-            target={[0, 1.3, -1.5]}
-            autoRotate
-            autoRotateSpeed={0.2}
-            enableDamping
-            dampingFactor={0.035}
-          />
+            <OrbitControls
+              enablePan={false}
+              maxPolarAngle={Math.PI / 2 - 0.05}
+              minDistance={2}
+              maxDistance={20}
+              target={[0, 1.3, -1.5]}
+              autoRotate
+              autoRotateSpeed={tier === "LOW" ? 0.5 : 0.2}
+              enableDamping
+              dampingFactor={0.035}
+            />
 
-          <PostProcessing />
-        </Suspense>
+            <TieredPostProcessing />
+          </Suspense>
+        </TierContext.Provider>
       </Canvas>
     </div>
   );

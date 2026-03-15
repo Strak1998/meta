@@ -87,13 +87,82 @@
   --sidebar-accent-foreground: #e8e8e8;
   --sidebar-border: #00ffcc12;
   --sidebar-ring: #00ffcc;
+
+  /* Responsive breakpoints as custom properties */
+  --bp-mobile: 320px;
+  --bp-mobile-landscape: 568px;
+  --bp-tablet: 768px;
+  --bp-desktop: 1024px;
+  --bp-large: 1440px;
+
+  /* Spacing scale */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  /* Touch targets */
+  --touch-min: 48px;
+  --cta-height: 56px;
+
+  /* Modular type scale - base 16px, ratio 1.25 */
+  --text-xs: clamp(0.64rem, 0.6rem + 0.2vw, 0.75rem);
+  --text-sm: clamp(0.8rem, 0.75rem + 0.25vw, 0.875rem);
+  --text-base: clamp(0.875rem, 0.83rem + 0.3vw, 1rem);
+  --text-lg: clamp(1rem, 0.93rem + 0.35vw, 1.125rem);
+  --text-xl: clamp(1.125rem, 1rem + 0.5vw, 1.25rem);
+  --text-2xl: clamp(1.25rem, 1.1rem + 0.65vw, 1.5rem);
+  --text-3xl: clamp(1.5rem, 1.25rem + 1vw, 2rem);
+  --text-4xl: clamp(2rem, 1.5rem + 1.5vw, 2.5rem);
+  --text-5xl: clamp(2.5rem, 2rem + 2vw, 3.5rem);
+
+  /* Line heights per level */
+  --leading-tight: 1.15;
+  --leading-snug: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* Letter spacing */
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;
+  --tracking-wider: 0.15em;
+  --tracking-widest: 0.3em;
+  --tracking-luxury: 0.5em;
+
+  /* Primary - cyan */
+  --color-primary-dim: rgba(0, 255, 204, 0.12);
+  --color-primary-full: #00ffcc;
+  --color-primary-glow: rgba(0, 255, 204, 0.4);
+
+  /* Secondary - magenta */
+  --color-secondary-dim: rgba(255, 0, 255, 0.12);
+  --color-secondary-full: #ff00ff;
+  --color-secondary-glow: rgba(255, 0, 255, 0.4);
+
+  /* Gold - premium/host */
+  --color-gold-dim: rgba(255, 215, 0, 0.12);
+  --color-gold-full: #ffd700;
+  --color-gold-glow: rgba(255, 215, 0, 0.4);
+
+  /* Connection indicators */
+  --color-connected: #00ff88;
+  --color-reconnecting: #ffaa00;
+  --color-disconnected: #ff4466;
 }
 
 .dark { --background: #030305; --foreground: #e8e8e8; }
 
 @layer base {
   * { @apply border-border outline-ring/50; }
-  body { @apply bg-background text-foreground; overflow-x: hidden; }
+  body {
+    @apply bg-background text-foreground;
+    overflow-x: hidden;
+    background-image: radial-gradient(ellipse at 50% 30%, rgba(0, 255, 204, 0.015) 0%, transparent 60%);
+  }
   html { scroll-behavior: smooth; }
 }
 
@@ -339,3 +408,207 @@
 
 .line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
 .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+
+/* ===================================================
+   RESPONSIVE CONCERT LAYOUT
+   =================================================== */
+
+.concert-layout {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 1fr;
+}
+
+/* Mobile portrait (320-767px) */
+@media (max-width: 767px) {
+  .concert-layout {
+    grid-template-rows: auto 50vh 1fr auto;
+  }
+  .concert-scene { min-height: 50vh; min-height: 50dvh; }
+  .concert-controls { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .concert-sidebar { display: none; }
+  .concert-cta-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--cta-height);
+    z-index: 50;
+  }
+}
+
+/* Mobile landscape (568-767px landscape) */
+@media (min-width: 568px) and (max-width: 767px) and (orientation: landscape) {
+  .concert-layout {
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 1fr;
+  }
+  .concert-scene { height: 100vh; height: 100dvh; }
+  .concert-topbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 40;
+    height: 40px;
+  }
+  .concert-chat-overlay {
+    position: fixed;
+    bottom: 8px;
+    left: 8px;
+    width: 280px;
+    max-height: 200px;
+    overflow-y: auto;
+    background: rgba(3, 3, 5, 0.7);
+    backdrop-filter: blur(12px);
+    border-radius: 8px;
+    z-index: 30;
+  }
+}
+
+/* Tablet (768-1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .concert-layout {
+    grid-template-columns: 1fr 280px;
+    grid-template-rows: auto 1fr;
+  }
+  .concert-scene { grid-column: 1; }
+  .concert-sidebar { grid-column: 2; grid-row: 1 / -1; }
+}
+
+/* Desktop (1024-1439px) */
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .concert-layout {
+    grid-template-columns: 1fr 320px;
+    grid-template-rows: auto 1fr;
+  }
+  .concert-sidebar { width: 320px; }
+}
+
+/* Large desktop (1440px+) */
+@media (min-width: 1440px) {
+  .concert-layout {
+    grid-template-columns: 1fr 384px;
+  }
+  .concert-sidebar { width: 384px; }
+}
+
+/* ===================================================
+   INTERACTIVE STATES
+   =================================================== */
+
+/* Hover/Active states for interactive elements */
+.interactive {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s ease;
+  will-change: transform;
+}
+.interactive:hover {
+  transform: translateY(-2px);
+}
+.interactive:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* Button states */
+.btn-loading {
+  position: relative;
+  pointer-events: none;
+}
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  animation: pulse-glow 1.2s ease-in-out infinite;
+  background: var(--color-primary-dim);
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 255, 204, 0.03) 0%,
+    rgba(0, 255, 204, 0.08) 50%,
+    rgba(0, 255, 204, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+  border-radius: 4px;
+}
+
+/* ===================================================
+   PHASE TRANSITION SYSTEM
+   =================================================== */
+
+/* Phase transition orchestration */
+.phase-exit {
+  animation: phase-exit 500ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+.phase-void {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.phase-enter {
+  animation: phase-enter 1500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 1500ms;
+  opacity: 0;
+}
+
+@keyframes phase-exit {
+  0% { opacity: 1; transform: scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: scale(0.95); filter: blur(8px); }
+}
+
+@keyframes phase-enter {
+  0% { opacity: 0; transform: scale(1.05); filter: blur(12px); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+/* ===================================================
+   REDUCED MOTION
+   =================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .text-3d-premium,
+  .text-gradient-hero {
+    animation: none;
+    background-size: 100% 100%;
+  }
+  .interactive:hover {
+    transform: none;
+  }
+  /* Keep functional transitions as simple fades */
+  .phase-exit, .phase-enter {
+    animation: none;
+    transition: opacity 200ms ease;
+  }
+}
+
+/* ===================================================
+   CONNECTION STATUS INDICATOR
+   =================================================== */
+
+.connection-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: background-color 0.3s ease;
+}
+.connection-indicator[data-status="connected"] {
+  background-color: var(--color-connected);
+  box-shadow: 0 0 6px var(--color-connected);
+}
+.connection-indicator[data-status="reconnecting"] {
+  background-color: var(--color-reconnecting);
+  box-shadow: 0 0 6px var(--color-reconnecting);
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+.connection-indicator[data-status="disconnected"] {
+  background-color: var(--color-disconnected);
+  box-shadow: 0 0 6px var(--color-disconnected);
+}

@@ -1,5 +1,10 @@
 import { NextRequest } from "next/server";
 import { liveStore } from "@/lib/live-store";
+import { getActiveUsers } from "@/lib/user-store";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 // POST /api/chat — send a new chat message
 export async function POST(request: NextRequest) {
@@ -32,14 +37,19 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   const encoder = new TextEncoder();
 
+  let cleanup: (() => void) | null = null;
+
   const stream = new ReadableStream({
     start(controller) {
-      // Send existing messages as initial data
       const existing = liveStore.getMessages(50);
-      const initData = `data: ${JSON.stringify({ type: "init", messages: existing, viewers: liveStore.getViewerCount() })}\n\n`;
+      const initData = `data: ${JSON.stringify({
+        type: "init",
+        messages: existing,
+        viewers: liveStore.getViewerCount(),
+        users: getActiveUsers(),
+      })}\n\n`;
       controller.enqueue(encoder.encode(initData));
 
-      // Subscribe to new events
       const unsubscribe = liveStore.subscribe((event, data) => {
         try {
           const sseData = `data: ${JSON.stringify({ type: event, ...data as Record<string, unknown> })}\n\n`;
@@ -49,12 +59,10 @@ export async function GET() {
         }
       });
 
-      // Cleanup on close — the `cancel` callback handles this
-      (controller as unknown as Record<string, unknown>).__unsubscribe = unsubscribe;
+      cleanup = unsubscribe;
     },
-    cancel(controller) {
-      const unsub = (controller as unknown as Record<string, unknown>)?.__unsubscribe;
-      if (typeof unsub === "function") unsub();
+    cancel() {
+      if (cleanup) cleanup();
     },
   });
 

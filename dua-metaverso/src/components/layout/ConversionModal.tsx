@@ -2,6 +2,14 @@
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
+function trackConversion() {
+  fetch("/api/track", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "modal_cta_click" }),
+  }).catch(() => {});
+}
+
 /**
  * ConversionModal — appears after DUA 2.0 presentation and after each artist performance.
  * Drives traffic to https://dua.2lados.pt with a strong CTA.
@@ -75,6 +83,7 @@ export default function ConversionModal({
             href="https://dua.2lados.pt"
             target="_blank"
             rel="noopener noreferrer"
+            onClick={trackConversion}
             className="block w-full rounded-xl py-3.5 text-center font-heading text-sm font-black tracking-[0.2em] text-white uppercase transition-transform hover:scale-[1.02] active:scale-95"
             style={{
               background: "linear-gradient(135deg, #00ccaa, #00ffcc, #a855f6, #ff00ff)",
