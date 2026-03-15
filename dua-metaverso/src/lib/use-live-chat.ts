@@ -6,7 +6,7 @@ import type { PresencePayload, UserProfile } from "@/types/user";
 
 const BACKOFF_STEPS = [1000, 2000, 4000, 8000, 16000, 30000];
 
-export function useLiveChat(username: string, avatar?: string, flag?: string) {
+export function useLiveChat(username: string, avatar?: string, flag?: string, accentColor?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [viewers, setViewers] = useState(1);
   const [connected, setConnected] = useState(false);
@@ -40,7 +40,7 @@ export function useLiveChat(username: string, avatar?: string, flag?: string) {
             break;
           case "message":
             setMessages((prev) => {
-              const msg = { id: data.id, user: data.user, text: data.text, timestamp: data.timestamp, avatar: data.avatar, flag: data.flag };
+              const msg = { id: data.id, user: data.user, text: data.text, timestamp: data.timestamp, avatar: data.avatar, flag: data.flag, accentColor: data.accentColor };
               const next = [...prev, msg];
               return next.slice(-100);
             });
@@ -100,13 +100,13 @@ export function useLiveChat(username: string, avatar?: string, flag?: string) {
         await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user: username, text, avatar, flag }),
+          body: JSON.stringify({ user: username, text, avatar, flag, accentColor }),
         });
       } catch {
         // Fire and forget
       }
     },
-    [username, avatar, flag]
+    [username, avatar, flag, accentColor]
   );
 
   const sendReaction = useCallback(

@@ -9,6 +9,7 @@ export interface ChatMessage {
   timestamp: number;
   avatar?: string;
   flag?: string;
+  accentColor?: string;
 }
 
 export interface Reaction {

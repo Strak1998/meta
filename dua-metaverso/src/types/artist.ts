@@ -26,23 +26,30 @@ export type CommandType =
   | "PHASE_CHANGE"
   | "ARTIST_ENTER"
   | "ARTIST_EXIT"
+  | "ARTIST_INTRO"
+  | "ARTIST_ANIMATION"
   | "SPOTLIGHT"
   | "AUDIO_SOURCE"
+  | "AUDIO_COMMAND"
   | "CHAT_HIGHLIGHT"
   | "CHAT_BROADCAST"
+  | "CHAT_REMOVE"
   | "CTA_TRIGGER"
   | "OVERLAY_SHOW"
   | "OVERLAY_HIDE"
   | "CONFETTI"
   | "EMERGENCY_PAUSE"
-  | "EMERGENCY_RESUME";
+  | "EMERGENCY_RESUME"
+  | "EMERGENCY_MESSAGE";
 
 export type OverlayType =
   | "system_message"
   | "chat_highlight"
   | "countdown"
   | "applause"
-  | "artist_name";
+  | "artist_name"
+  | "artist_intro"
+  | "emergency_message";
 
 export type AudioMode = "microphone" | "stream" | "file" | "silence";
 

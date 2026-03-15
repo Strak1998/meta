@@ -2,27 +2,36 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 
-interface FloatingEmoji {
+interface FloatingReaction {
   id: number;
-  emoji: string;
+  text: string;
+  color: string;
   x: number;
   delay: number;
 }
 
+const REACTION_COLORS: Record<string, string> = {
+  FOGO: "#ff4400",
+  AMOR: "#ff69b4",
+  LUA: "#c084fc",
+  NOTA: "#fbbf24",
+};
+
 export default function ReactionsOverlay() {
-  const [emojis, setEmojis] = useState<FloatingEmoji[]>([]);
+  const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const counter = useRef(0);
 
-  const addReaction = useCallback((emoji: string) => {
+  const addReaction = useCallback((text: string) => {
     const id = counter.current++;
     const x = 8 + Math.random() * 84;
     const delay = Math.random() * 0.2;
-    setEmojis((prev) => [...prev.slice(-25), { id, emoji, x, delay }]);
-    setTimeout(() => setEmojis((prev) => prev.filter((e) => e.id !== id)), 3800);
+    const color = REACTION_COLORS[text] || "#00ffcc";
+    setReactions((prev) => [...prev.slice(-10), { id, text, color, x, delay }]);
+    setTimeout(() => setReactions((prev) => prev.filter((e) => e.id !== id)), 1500);
   }, []);
 
   useEffect(() => {
-    const pool = ["\uD83D\uDD25", "\u2764\uFE0F", "\uD83C\uDFB5", "\uD83C\uDF15", "\uD83D\uDC8E", "\uD83D\uDE80", "\u2728", "\uD83C\uDFA7"];
+    const pool = ["FOGO", "AMOR", "LUA", "NOTA"];
     const iv = setInterval(() => {
       if (Math.random() > 0.65) {
         addReaction(pool[Math.floor(Math.random() * pool.length)]);
@@ -33,17 +42,23 @@ export default function ReactionsOverlay() {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-30 overflow-hidden">
-      {emojis.map((e) => (
+      {reactions.map((r) => (
         <span
-          key={e.id}
-          className="absolute text-2xl animate-float-emoji"
+          key={r.id}
+          className="absolute animate-float-emoji"
           style={{
-            left: `${e.x}%`,
+            left: `${r.x}%`,
             bottom: "-40px",
-            animationDelay: `${e.delay}s`,
+            animationDelay: `${r.delay}s`,
+            color: r.color,
+            fontFamily: "Orbitron, sans-serif",
+            fontSize: "14px",
+            fontWeight: 700,
+            letterSpacing: "3px",
+            textShadow: `0 0 10px ${r.color}66`,
           }}
         >
-          {e.emoji}
+          {r.text}
         </span>
       ))}
     </div>

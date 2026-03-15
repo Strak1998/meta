@@ -10,7 +10,7 @@ export const maxDuration = 300;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { user, text, avatar, flag } = body;
+    const { user, text, avatar, flag, accentColor } = body;
 
     if (!user || !text || typeof text !== "string" || text.trim().length === 0) {
       return Response.json({ error: "user and text are required" }, { status: 400 });
@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       text: text.trim().slice(0, 500),
       avatar,
       flag,
+      accentColor,
     });
 
     return Response.json(message, { status: 201 });

@@ -31,6 +31,7 @@ export function LiveOverlay({ concertState }: Props) {
         @keyframes olFadeIn { from { opacity:0; transform:translate(-50%,20px); } to { opacity:1; transform:translate(-50%,0); } }
         @keyframes artistIn { from { opacity:0; transform:scale(0.5); filter:blur(20px); } to { opacity:1; transform:scale(1); filter:blur(0); } }
         @keyframes countPulse { 0%{ transform:scale(1.4); opacity:0.4; } 100%{ transform:scale(1); opacity:1; } }
+        @keyframes emergencyPulse { 0%{ border-color:rgba(255,68,102,0.8); } 50%{ border-color:rgba(255,68,102,0.3); } 100%{ border-color:rgba(255,68,102,0.8); } }
       `}</style>
 
       {type === "system_message" && (
@@ -57,10 +58,67 @@ export function LiveOverlay({ concertState }: Props) {
         );
       })()}
 
+      {type === "artist_intro" && <ArtistIntroOverlay name={(data.name as string) ?? ""} bio={(data.bio as string) ?? ""} />}
+
+      {type === "emergency_message" && (
+        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:60, background:"rgba(180,0,0,0.75)", backdropFilter:"blur(6px)" }}>
+          <div style={{ textAlign:"center", border:"3px solid rgba(255,68,102,0.8)", borderRadius:20, padding:"40px 60px", animation:"emergencyPulse 1.5s infinite", background:"rgba(0,0,0,0.6)" }}>
+            <div style={{ fontSize:"clamp(10px,1.2vw,14px)", color:"#ff4466", fontFamily:"Orbitron,sans-serif", letterSpacing:6, marginBottom:16 }}>⚠ EMERGÊNCIA</div>
+            <div style={{ fontSize:"clamp(24px,5vw,60px)", color:"#ffffff", fontFamily:"Orbitron,sans-serif", fontWeight:900, letterSpacing:4 }}>
+              {(data.text as string) ?? "PAUSA TÉCNICA"}
+            </div>
+          </div>
+        </div>
+      )}
+
       {type === "countdown" && <CountdownOverlay value={(data.countdown as number) ?? 5} onEnd={() => setVisible(false)} />}
 
       {type === "applause" && <ApplauseCanvas />}
     </>
+  );
+}
+
+function ArtistIntroOverlay({ name, bio }: { name: string; bio: string }) {
+  const [revealedChars, setRevealedChars] = useState(0);
+  const [showBio, setShowBio] = useState(false);
+
+  useEffect(() => {
+    setRevealedChars(0);
+    setShowBio(false);
+    if (!name) return;
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setRevealedChars(i);
+      if (i >= name.length) {
+        clearInterval(interval);
+        setTimeout(() => setShowBio(true), 500);
+      }
+    }, 120);
+    return () => clearInterval(interval);
+  }, [name]);
+
+  return (
+    <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:50, background:"rgba(0,0,0,0.80)", backdropFilter:"blur(6px)" }}>
+      <div style={{ textAlign:"center" }}>
+        <div style={{ fontSize:"clamp(11px,1.5vw,16px)", color:"#888", fontFamily:"Orbitron,sans-serif", letterSpacing:6, marginBottom:20 }}>
+          A SEGUIR NO PALCO
+        </div>
+        {/* Spotlight effect */}
+        <div style={{ width:"clamp(200px,40vw,500px)", height:4, background:"linear-gradient(90deg, transparent, #ffd700, transparent)", margin:"0 auto 24px", opacity: revealedChars > 0 ? 1 : 0, transition:"opacity 0.5s" }} />
+        <div style={{ fontSize:"clamp(40px,9vw,100px)", fontFamily:"Orbitron,sans-serif", fontWeight:900, letterSpacing:6, minHeight:"1.2em" }}>
+          {name.split("").map((ch, i) => (
+            <span key={i} style={{ color: i < revealedChars ? "#ffd700" : "transparent", textShadow: i < revealedChars ? "0 0 40px rgba(255,215,0,0.6)" : "none", transition:"color 0.15s, text-shadow 0.15s" }}>{ch}</span>
+          ))}
+          {revealedChars < name.length && <span style={{ color:"#ffd700", animation:"countPulse 0.5s infinite" }}>_</span>}
+        </div>
+        {showBio && bio && (
+          <div style={{ fontSize:"clamp(12px,1.8vw,20px)", color:"#aaa", marginTop:16, fontFamily:"Montserrat,sans-serif", letterSpacing:3, opacity:0, animation:"olFadeIn 0.6s ease forwards" }}>
+            {bio}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

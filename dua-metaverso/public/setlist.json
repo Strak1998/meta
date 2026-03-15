@@ -1,0 +1,9 @@
+{
+  "tracks": [
+    { "id": "1", "artist": "DJ DUA", "title": "Abertura Cósmica", "duration": "3:45", "url": "" },
+    { "id": "2", "artist": "VADO MKA", "title": "Trap Lusófono", "duration": "4:12", "url": "" },
+    { "id": "3", "artist": "UZZY", "title": "Kizomba Espacial", "duration": "3:30", "url": "" },
+    { "id": "4", "artist": "ESTRACA", "title": "Funana Electro", "duration": "4:00", "url": "" },
+    { "id": "5", "artist": "DUA 2.0", "title": "Encerramento", "duration": "2:30", "url": "" }
+  ]
+}

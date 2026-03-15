@@ -24,7 +24,12 @@ function applyCmd(prev: ConcertState, cmd: ConcertCommand): ConcertState {
     case "OVERLAY_SHOW": return { ...prev, commandLog: log, activeOverlay: { type: p.overlayType as OverlayType, data: p, expiresAt: p.duration ? Date.now() + (p.duration as number) : undefined } };
     case "OVERLAY_HIDE": return { ...prev, activeOverlay: undefined, commandLog: log };
     case "EMERGENCY_PAUSE": return { ...prev, isPaused: true, commandLog: log };
-    case "EMERGENCY_RESUME": return { ...prev, isPaused: false, commandLog: log };
+    case "EMERGENCY_RESUME": return { ...prev, isPaused: false, activeOverlay: undefined, commandLog: log };
+    case "EMERGENCY_MESSAGE": return { ...prev, activeOverlay: { type: "emergency_message" as OverlayType, data: p, expiresAt: undefined }, commandLog: log };
+    case "AUDIO_COMMAND": return { ...prev, commandLog: log };
+    case "ARTIST_INTRO": return { ...prev, activeOverlay: { type: "artist_intro" as OverlayType, data: p, expiresAt: p.duration ? Date.now() + (p.duration as number) : undefined }, commandLog: log };
+    case "ARTIST_ANIMATION": return { ...prev, commandLog: log };
+    case "CHAT_REMOVE": return { ...prev, commandLog: log };
     default: return { ...prev, commandLog: log };
   }
 }

@@ -92,8 +92,9 @@ export default function HomePage() {
 
   const joined = userProfile !== null;
   const username = userProfile?.name ?? "";
+  const bodyAccentColor = userProfile?.avatarBody === "1" ? "#00ffcc" : userProfile?.avatarBody === "2" ? "#fbbf24" : userProfile?.avatarBody === "3" ? "#c084fc" : "#00ffcc";
 
-  const { messages, viewers, connected: chatConnected, activeUsers, sendMessage, sendReaction } = useLiveChat(username, userProfile?.avatarStyle, userProfile?.country);
+  const { messages, viewers, connected: chatConnected, activeUsers, sendMessage, sendReaction } = useLiveChat(username, userProfile?.avatarStyle, userProfile?.country, bodyAccentColor);
   const { state: concertState, connected: eventConnected } = useConcertEvents();
   const connectionStatus = useConnectionStatus({ chatConnected, eventConnected });
   const sceneAudienceUsers = useMemo(() => {
@@ -215,6 +216,21 @@ export default function HomePage() {
       confetti({ particleCount: last.payload?.intensity === "high" ? 350 : 200, spread: 150, origin: { y: 0.4 }, colors, ticks: 120 });
     }
     if (last.type === "CTA_TRIGGER") setConversionModalOpen(true);
+    // Audio commands
+    if (last.type === "AUDIO_COMMAND") {
+      const action = last.payload?.action as string;
+      const url = last.payload?.url as string;
+      if (action === "play" && url) {
+        const audio = document.getElementById("dua-audio") as HTMLAudioElement | null;
+        if (audio) { audio.src = url; audio.currentTime = 0; audio.play().catch(() => {}); }
+      } else if (action === "stop") {
+        const audio = document.getElementById("dua-audio") as HTMLAudioElement | null;
+        if (audio) { audio.pause(); audio.currentTime = 0; audio.src = ""; }
+      } else if (action === "pause") {
+        const audio = document.getElementById("dua-audio") as HTMLAudioElement | null;
+        if (audio) { audio.pause(); }
+      }
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [concertState.commandLog.length]);
 
@@ -251,7 +267,7 @@ export default function HomePage() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const sidebarMessages = messages.map((m) => ({ id: m.id, user: m.user, text: m.text, ts: m.timestamp }));
+  const sidebarMessages = messages.map((m) => ({ id: m.id, user: m.user, text: m.text, ts: m.timestamp, flag: m.flag, accentColor: m.accentColor }));
 
   const phaseClass = phaseTransition === "exit"
     ? "phase-exit"
@@ -267,6 +283,8 @@ export default function HomePage() {
       {!joined && !loading && !restoringUser && <OnboardingScreen onJoin={handleJoin} />}
       <MusicModal open={musicModalOpen} onOpenChange={setMusicModalOpen} onGenerate={handleGenerate} />
       <ConversionModal open={conversionModalOpen} onOpenChange={setConversionModalOpen} />
+      {/* Hidden audio element for backstage-controlled playback */}
+      <audio id="dua-audio" crossOrigin="anonymous" preload="auto" style={{ display: "none" }} />
 
       <div className={`min-h-screen min-h-[100dvh] bg-[#030305] transition-opacity duration-1000 ${loading ? "opacity-0" : "opacity-100"}`}>
         <TopBar />

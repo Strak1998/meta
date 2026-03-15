@@ -1,14 +1,13 @@
 "use client";
 
 import { MessageSquare, Users as UsersIcon, Send, ListMusic, Shield } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ConcertPhase } from "@/types/artist";
 
 interface SidebarProps {
-  messages: { id: string; user: string; text: string; ts: number }[];
+  messages: { id: string; user: string; text: string; ts: number; flag?: string; accentColor?: string }[];
   onSend: (text: string) => Promise<void>;
   onReaction: (emoji: string) => Promise<void>;
   isHost: boolean;
@@ -26,6 +25,15 @@ const PHASES: { id: ConcertPhase; label: string }[] = [
   { id: "finale", label: "Finale" },
 ];
 
+const REACTIONS = [
+  { label: "FOGO", color: "#ff4400" },
+  { label: "AMOR", color: "#ff69b4" },
+  { label: "LUA", color: "#c084fc" },
+  { label: "NOTA", color: "#fbbf24" },
+];
+
+const MAX_CHARS = 200;
+
 export default function Sidebar({
   messages,
   onSend,
@@ -37,13 +45,48 @@ export default function Sidebar({
 }: SidebarProps) {
   const [inputMsg, setInputMsg] = useState("");
   const [activeTab, setActiveTab] = useState<"chat" | "queue" | "host">("chat");
+  const [charWarn, setCharWarn] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const autoScrollRef = useRef(true);
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputMsg.trim()) return;
-    onSend(inputMsg);
-    setInputMsg("");
+  useEffect(() => {
+    if (autoScrollRef.current && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages.length]);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    autoScrollRef.current = scrollHeight - scrollTop - clientHeight < 40;
   };
+
+  const handleSubmit = () => {
+    if (!inputMsg.trim()) return;
+    onSend(inputMsg.slice(0, MAX_CHARS));
+    setInputMsg("");
+    setCharWarn(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    if (val.length > MAX_CHARS) {
+      setCharWarn(true);
+      setInputMsg(val.slice(0, MAX_CHARS));
+    } else {
+      setCharWarn(val.length > MAX_CHARS - 20);
+      setInputMsg(val);
+    }
+  };
+
+  const isDuaBot = (user: string) => user === "DUA Bot" || user === "Sistema";
 
   return (
     <aside className="flex h-full flex-col rounded-xl border border-cyan-400/10 bg-black/60 backdrop-blur-md">
@@ -74,14 +117,18 @@ export default function Sidebar({
       {/* Chat tab */}
       {activeTab === "chat" && (
         <>
-          <ScrollArea className="flex-1 p-3">
+          <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-3" style={{ scrollBehavior: "smooth" }}>
             <div className="space-y-3">
-              {messages.map((msg) => (
-                <div key={msg.id} className="text-sm">
-                  <span className="mr-1.5 font-bold text-cyan-300">{msg.user}:</span>
-                  <span className="text-white/80">{msg.text}</span>
-                </div>
-              ))}
+              {messages.map((msg) => {
+                const isBot = isDuaBot(msg.user);
+                return (
+                  <div key={msg.id} className="text-sm" style={isBot ? { fontStyle: "italic" } : undefined}>
+                    {msg.flag && <span className="mr-1">{msg.flag}</span>}
+                    <span className="mr-1.5 font-bold" style={{ color: isBot ? "#888" : msg.accentColor || "#67e8f9" }}>{msg.user}:</span>
+                    <span className={isBot ? "text-white/50" : "text-white/80"}>{msg.text}</span>
+                  </div>
+                );
+              })}
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center pt-10 text-center opacity-30">
                   <MessageSquare className="mx-auto mb-2 h-8 w-8" />
@@ -89,35 +136,48 @@ export default function Sidebar({
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
 
           <div className="space-y-2.5 border-t border-cyan-400/10 bg-black/40 p-3">
+            {/* Text reactions */}
             <div className="flex justify-center gap-2">
-              {["\uD83D\uDC4F", "\uD83D\uDD25", "\uD83D\uDE80", "\uD83C\uDFB8"].map((emoji) => (
+              {REACTIONS.map((r) => (
                 <button
-                  key={emoji}
-                  onClick={() => onReaction(emoji)}
-                  className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-base transition hover:bg-cyan-400/20"
+                  key={r.label}
+                  onClick={() => onReaction(r.label)}
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 transition hover:bg-cyan-400/20"
+                  style={{ color: r.color, fontFamily: "Orbitron, sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: 2 }}
                 >
-                  {emoji}
+                  {r.label}
                 </button>
               ))}
             </div>
-            <form onSubmit={onSubmit} className="flex gap-2">
-              <Input
-                value={inputMsg}
-                onChange={(e) => setInputMsg(e.target.value)}
-                placeholder="Envia uma mensagem..."
-                className="h-10 border-cyan-400/20 bg-black/50 text-sm text-white placeholder:text-white/20 focus-visible:ring-cyan-400/50"
-              />
+            {/* Input */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <textarea
+                  value={inputMsg}
+                  onChange={handleInput}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Envia uma mensagem..."
+                  rows={1}
+                  className="h-10 w-full resize-none rounded-md border border-cyan-400/20 bg-black/50 px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-cyan-400/50"
+                  style={{ fontFamily: "Montserrat, sans-serif" }}
+                />
+                {charWarn && (
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-amber-400">
+                    {inputMsg.length}/{MAX_CHARS}
+                  </span>
+                )}
+              </div>
               <Button
-                type="submit"
+                onClick={handleSubmit}
                 size="icon"
                 className="h-10 w-10 bg-cyan-500 text-black shadow-[0_0_10px_rgba(0,255,204,0.3)] hover:bg-cyan-400"
               >
                 <Send className="h-4 w-4" />
               </Button>
-            </form>
+            </div>
           </div>
         </>
       )}

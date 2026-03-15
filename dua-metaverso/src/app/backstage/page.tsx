@@ -45,9 +45,19 @@ export default function Backstage() {
   const [countdown, setCountdown] = useState(5);
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState<Array<{id:string;user:string;text:string;timestamp:number}>>([]);
+  const [audioFileUrl, setAudioFileUrl] = useState("");
+  const [audioFileName, setAudioFileName] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioTab, setAudioTab] = useState<"ficheiro"|"stream"|"microfone">("ficheiro");
+  const [artistName, setArtistName] = useState("");
+  const [artistBio, setArtistBio] = useState("");
+  const [emergencyMsg, setEmergencyMsg] = useState("");
+  const [vuBars, setVuBars] = useState<number[]>(Array(16).fill(0));
   const audioRef = useRef<HTMLAudioElement|null>(null);
   const analyserRef = useRef<AnalyserNode|null>(null);
   const animRef = useRef<number|null>(null);
+  const audioCtxRef = useRef<AudioContext|null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -122,24 +132,68 @@ export default function Backstage() {
 
   const startStream = async(url:string)=>{
     try {
-      const ctx=new AudioContext();
+      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+      const ctx = audioCtxRef.current;
       const audio=new Audio(url); audio.crossOrigin="anonymous"; audioRef.current=audio;
       const src=ctx.createMediaElementSource(audio);
-      const an=ctx.createAnalyser(); an.fftSize=256;
+      const an=ctx.createAnalyser(); an.fftSize=64;
       src.connect(an); an.connect(ctx.destination); analyserRef.current=an;
       audio.volume=muted?0:1; await audio.play();
       const data=new Uint8Array(an.frequencyBinCount);
-      const tick=()=>{ an.getByteFrequencyData(data); setAudioLevel(Math.min(100,Math.round(data.reduce((a:number,b:number)=>a+b,0)/data.length/255*200))); animRef.current=requestAnimationFrame(tick); };
+      const tick=()=>{ an.getByteFrequencyData(data); const bars:number[]=[]; for(let i=0;i<16;i++) bars.push(Math.min(100,Math.round(data[i*2]/255*100))); setVuBars(bars); setAudioLevel(Math.min(100,Math.round(data.reduce((a:number,b:number)=>a+b,0)/data.length/255*200))); animRef.current=requestAnimationFrame(tick); };
       animRef.current=requestAnimationFrame(tick);
-      await cmd("AUDIO_SOURCE",{mode:"stream",url});
+      setAudioPlaying(true);
+      await cmd("AUDIO_COMMAND",{action:"play",mode:"stream",url});
     } catch(err){ console.error(err); }
   };
 
   const stopStream = async()=>{
     if(animRef.current) cancelAnimationFrame(animRef.current);
     if(audioRef.current){ audioRef.current.pause(); audioRef.current=null; }
-    analyserRef.current=null; setAudioLevel(0);
-    await cmd("AUDIO_SOURCE",{mode:"silence"});
+    analyserRef.current=null; setAudioLevel(0); setVuBars(Array(16).fill(0));
+    setAudioPlaying(false);
+    await cmd("AUDIO_COMMAND",{action:"stop"});
+  };
+
+  const handleFileUpload = async(e: React.ChangeEvent<HTMLInputElement>)=>{
+    const file = e.target.files?.[0];
+    if(!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/audio", { method:"POST", body: formData });
+      if(res.ok) {
+        const data = await res.json();
+        setAudioFileUrl(data.url);
+        setAudioFileName(data.name || file.name);
+      }
+    } catch(err){ console.error(err); }
+    setUploading(false);
+  };
+
+  const playFile = async()=>{
+    if(!audioFileUrl) return;
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+      const ctx = audioCtxRef.current;
+      const audio = new Audio(audioFileUrl); audio.crossOrigin="anonymous"; audioRef.current=audio;
+      const src=ctx.createMediaElementSource(audio);
+      const an=ctx.createAnalyser(); an.fftSize=64;
+      src.connect(an); an.connect(ctx.destination); analyserRef.current=an;
+      audio.volume=muted?0:1; await audio.play();
+      const data=new Uint8Array(an.frequencyBinCount);
+      const tick=()=>{ an.getByteFrequencyData(data); const bars:number[]=[]; for(let i=0;i<16;i++) bars.push(Math.min(100,Math.round(data[i*2]/255*100))); setVuBars(bars); setAudioLevel(Math.min(100,Math.round(data.reduce((a:number,b:number)=>a+b,0)/data.length/255*200))); animRef.current=requestAnimationFrame(tick); };
+      animRef.current=requestAnimationFrame(tick);
+      setAudioPlaying(true);
+      await cmd("AUDIO_COMMAND",{action:"play",mode:"file",url:audioFileUrl});
+    } catch(err){ console.error(err); }
+  };
+
+  const pauseAudio = async()=>{
+    if(audioRef.current){ audioRef.current.pause(); }
+    setAudioPlaying(false);
+    await cmd("AUDIO_COMMAND",{action:"pause"});
   };
 
   const phase=PHASES.find(p=>p.id===state.phase);
@@ -217,6 +271,31 @@ export default function Backstage() {
         {/* ARTISTAS */}
         {tab==="artistas"&&(
           <div>
+            {/* INTRO MECHANISM */}
+            <div style={{marginBottom:24,padding:20,background:"rgba(0,0,0,0.5)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:12}}>
+              <div style={{fontSize:10,color:"#555",letterSpacing:3,marginBottom:12}}>REVELACAO DE ARTISTA</div>
+              <div style={{display:"flex",gap:8,marginBottom:8}}>
+                <div style={{flex:1}}>
+                  <label style={lbl}>NOME DO PROXIMO ARTISTA</label>
+                  <input type="text" placeholder="Nome do artista..." value={artistName} onChange={e=>setArtistName(e.target.value)} style={inp} />
+                </div>
+              </div>
+              <div style={{marginBottom:8}}>
+                <label style={lbl}>BIO CURTA (opcional)</label>
+                <input type="text" placeholder="Uma frase sobre o artista..." value={artistBio} onChange={e=>setArtistBio(e.target.value)} style={inp} />
+              </div>
+              <button
+                onClick={async()=>{
+                  if(!artistName.trim()) return;
+                  await cmd("ARTIST_INTRO",{name:artistName.trim(),bio:artistBio.trim()||undefined,progressive:true});
+                }}
+                disabled={!artistName.trim()}
+                style={{width:"100%",padding:16,background:artistName.trim()?"linear-gradient(135deg,#c084fc,#7c3aed)":"rgba(0,0,0,0.3)",border:"none",borderRadius:8,color:artistName.trim()?"#fff":"#444",fontSize:14,fontWeight:700,fontFamily:"Orbitron,sans-serif",cursor:artistName.trim()?"pointer":"default",letterSpacing:3,boxShadow:artistName.trim()?"0 0 30px rgba(192,132,252,0.3)":"none"}}
+              >
+                ✦ REVELAR ARTISTA ✦
+              </button>
+            </div>
+
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
               <div style={{fontSize:10,color:"#555",letterSpacing:3}}>SLOTS DE ARTISTAS</div>
               <a href="/backstage/artists" style={{fontSize:10,color:"#00ffcc",letterSpacing:2,textDecoration:"none"}}>GESTAO COMPLETA →</a>
@@ -254,16 +333,62 @@ export default function Backstage() {
 
         {/* AUDIO */}
         {tab==="audio"&&(
-          <div style={{maxWidth:600}}>
+          <div style={{maxWidth:700}}>
             <div style={{fontSize:10,color:"#555",letterSpacing:3,marginBottom:20}}>CONTROLO DE AUDIO</div>
+            {/* Audio sub-tabs */}
+            <div style={{display:"flex",gap:2,marginBottom:16}}>
+              {(["ficheiro","stream","microfone"] as const).map(t=>(
+                <button key={t} onClick={()=>setAudioTab(t)} style={{flex:1,padding:"10px 0",background:audioTab===t?"rgba(0,255,204,0.15)":"rgba(0,0,0,0.4)",border:audioTab===t?"1px solid rgba(0,255,204,0.4)":"1px solid #222",borderRadius:8,color:audioTab===t?"#00ffcc":"#555",fontSize:10,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:2}}>{t.toUpperCase()}</button>
+              ))}
+            </div>
+            {/* FILE MODE */}
+            {audioTab==="ficheiro"&&(
+              <div style={{marginBottom:16}}>
+                <label style={lbl}>FICHEIRO DE AUDIO (MP3, WAV, OGG)</label>
+                <div style={{display:"flex",gap:8,marginBottom:12}}>
+                  <label style={{flex:1,padding:"12px 16px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:audioFileName?"#00ffcc":"#555",fontSize:12,cursor:"pointer",textAlign:"center"}}>
+                    {uploading?"A CARREGAR...":audioFileName||"ESCOLHER FICHEIRO"}
+                    <input type="file" accept="audio/*" onChange={handleFileUpload} style={{display:"none"}} />
+                  </label>
+                </div>
+                {audioFileUrl&&(
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={playFile} disabled={audioPlaying} style={{flex:1,padding:14,background:audioPlaying?"rgba(0,255,204,0.1)":"#00ffcc",color:audioPlaying?"#00ffcc":"#030305",border:"none",borderRadius:8,fontFamily:"Orbitron,sans-serif",fontSize:12,fontWeight:700,cursor:"pointer",letterSpacing:2}}>▶ PLAY</button>
+                    <button onClick={pauseAudio} disabled={!audioPlaying} style={{flex:1,padding:14,background:"rgba(255,215,0,0.15)",border:"1px solid rgba(255,215,0,0.4)",borderRadius:8,color:"#ffd700",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:2}}>⏸ PAUSAR</button>
+                    <button onClick={stopStream} style={{flex:1,padding:14,background:"rgba(255,68,102,0.15)",border:"1px solid rgba(255,68,102,0.4)",borderRadius:8,color:"#ff4466",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:2}}>⏹ STOP</button>
+                  </div>
+                )}
+              </div>
+            )}
+            {/* STREAM MODE */}
+            {audioTab==="stream"&&(
+              <div style={{marginBottom:16}}>
+                <label style={lbl}>URL DO STREAM (Icecast / HLS / MP3)</label>
+                <div style={{display:"flex",gap:8}}>
+                  <input type="url" placeholder="http://localhost:8000/stream.mp3" value={streamUrl} onChange={e=>setStreamUrl(e.target.value)} style={{...inp,flex:1}} />
+                  <button onClick={()=>startStream(streamUrl)} disabled={!streamUrl} style={{padding:"0 16px",background:"#00ffcc",color:"#030305",border:"none",borderRadius:8,fontFamily:"Orbitron,sans-serif",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:1}}>LIGAR</button>
+                  <button onClick={pauseAudio} style={{padding:"0 12px",background:"rgba(255,215,0,0.15)",border:"1px solid rgba(255,215,0,0.4)",borderRadius:8,color:"#ffd700",fontSize:11,fontFamily:"Orbitron,sans-serif",cursor:"pointer"}}>PAUSAR</button>
+                  <button onClick={stopStream} style={{padding:"0 12px",background:"transparent",border:"1px solid #333",borderRadius:8,color:"#666",fontSize:11,fontFamily:"Orbitron,sans-serif",cursor:"pointer"}}>STOP</button>
+                </div>
+              </div>
+            )}
+            {/* MICROFONE MODE */}
+            {audioTab==="microfone"&&(
+              <div style={{marginBottom:16,padding:20,background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12}}>
+                <div style={{fontSize:12,color:"#888",marginBottom:8}}>Modo microfone requer LiveKit configurado.</div>
+                <div style={{fontSize:11,color:"#555"}}>Configure LIVEKIT_API_KEY e LIVEKIT_API_SECRET nas variáveis de ambiente.</div>
+              </div>
+            )}
+            {/* VU METER — 16 barras */}
             <div style={{marginBottom:16}}>
-              <label style={lbl}>URL DO STREAM (Icecast / HLS / MP3)</label>
-              <div style={{display:"flex",gap:8}}>
-                <input type="url" placeholder="http://localhost:8000/stream.mp3" value={streamUrl} onChange={e=>setStreamUrl(e.target.value)} style={{...inp,flex:1}} />
-                <button onClick={()=>startStream(streamUrl)} disabled={!streamUrl} style={{padding:"0 16px",background:"#00ffcc",color:"#030305",border:"none",borderRadius:8,fontFamily:"Orbitron,sans-serif",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:1}}>LIGAR</button>
-                <button onClick={stopStream} style={{padding:"0 12px",background:"transparent",border:"1px solid #333",borderRadius:8,color:"#666",fontSize:11,fontFamily:"Orbitron,sans-serif",cursor:"pointer"}}>STOP</button>
+              <label style={lbl}>VU METER</label>
+              <div style={{display:"flex",gap:2,height:60,alignItems:"flex-end",background:"rgba(0,0,0,0.4)",borderRadius:8,padding:"8px 6px"}}>
+                {vuBars.map((level,i)=>(
+                  <div key={i} style={{flex:1,height:`${Math.max(4,level)}%`,background:level>80?"#ff4466":level>50?"#ffd700":"#00ffcc",borderRadius:2,transition:"height 0.05s",minHeight:3}}/>
+                ))}
               </div>
             </div>
+            {/* AUDIO LEVEL */}
             <div style={{marginBottom:16}}>
               <label style={lbl}>NIVEL DE AUDIO</label>
               <div style={{height:24,background:"rgba(255,255,255,0.05)",borderRadius:4,overflow:"hidden",position:"relative"}}>
@@ -274,20 +399,6 @@ export default function Backstage() {
             <button onClick={handleMute} style={{width:"100%",padding:14,background:muted?"rgba(255,68,102,0.2)":"rgba(255,255,255,0.05)",border:`1px solid ${muted?"rgba(255,68,102,0.5)":"#333"}`,borderRadius:8,color:muted?"#ff4466":"#888",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:1}}>
               {muted?"MUTE ACTIVO — M PARA DESMUTAR":"MUTE (tecla M)"}
             </button>
-            <div style={{marginTop:24,background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:20}}>
-              <div style={{fontSize:10,color:"#555",letterSpacing:3,marginBottom:12}}>INSTRUCOES</div>
-              {[
-                {t:"ABLETON → ICECAST",d:"Instala Icecast2. Plugin Liquidsoap. URL: http://localhost:8000/live.mp3"},
-                {t:"MESA FISICA → USB",d:"Liga via interface USB (Focusrite Scarlett). Usa modo MICROFONE no browser."},
-                {t:"MIXLR / SOUNDCLOUD",d:"Inicia stream. Copia URL publico e cola acima."},
-                {t:"MIXXX → ICECAST",d:"Settings > Broadcast > Icecast2. Port 8000, mount /stream."},
-              ].map(({t,d})=>(
-                <div key={t} style={{borderLeft:"2px solid rgba(0,255,204,0.2)",paddingLeft:12,marginBottom:14}}>
-                  <div style={{fontSize:10,color:"#00ffcc",letterSpacing:1,marginBottom:4}}>{t}</div>
-                  <div style={{fontSize:12,color:"#666",lineHeight:1.6,fontFamily:"Montserrat,sans-serif"}}>{d}</div>
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
@@ -357,6 +468,22 @@ export default function Backstage() {
         {tab==="emergencia"&&(
           <div style={{maxWidth:520}}>
             <div style={{fontSize:10,color:"#ff4466",letterSpacing:3,marginBottom:20}}>PAINEL DE EMERGENCIA</div>
+            {/* EMERGENCY MESSAGE */}
+            <div style={{background:"rgba(255,68,102,0.08)",border:"1px solid rgba(255,68,102,0.3)",borderRadius:12,padding:20,marginBottom:20}}>
+              <label style={{...lbl,color:"#ff4466"}}>MENSAGEM DE EMERGENCIA</label>
+              <div style={{display:"flex",gap:8,marginBottom:8}}>
+                <input type="text" placeholder="PAUSA TECNICA" value={emergencyMsg} onChange={e=>setEmergencyMsg(e.target.value)} style={{...inp,borderColor:"rgba(255,68,102,0.3)"}} />
+                <button
+                  onClick={async()=>{
+                    if(!emergencyMsg.trim()) return;
+                    await cmd("EMERGENCY_MESSAGE",{message:emergencyMsg.trim()});
+                  }}
+                  disabled={!emergencyMsg.trim()}
+                  style={{padding:"0 20px",background:emergencyMsg.trim()?"rgba(255,68,102,0.3)":"rgba(0,0,0,0.3)",border:"1px solid rgba(255,68,102,0.5)",borderRadius:8,color:emergencyMsg.trim()?"#ff4466":"#444",fontSize:11,fontFamily:"Orbitron,sans-serif",cursor:emergencyMsg.trim()?"pointer":"default",letterSpacing:1,whiteSpace:"nowrap"}}
+                >ENVIAR</button>
+              </div>
+              <div style={{fontSize:10,color:"#666"}}>Aparece como overlay vermelho sobre a cena para todos os espectadores.</div>
+            </div>
             <div style={{background:"rgba(255,68,102,0.05)",border:"1px solid rgba(255,68,102,0.2)",borderRadius:12,padding:24,marginBottom:20}}>
               <div style={{fontSize:11,color:"#ff4466",letterSpacing:2,marginBottom:16}}>ACOES DE ALTO IMPACTO — AFECTAM TODOS OS ESPECTADORES</div>
               <div style={{display:"flex",flexDirection:"column",gap:12}}>

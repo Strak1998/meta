@@ -82,7 +82,27 @@ class ConcertStore {
         this.state = { ...this.state, isPaused: true };
         break;
       case "EMERGENCY_RESUME":
-        this.state = { ...this.state, isPaused: false };
+        this.state = { ...this.state, isPaused: false, activeOverlay: undefined };
+        break;
+      case "EMERGENCY_MESSAGE":
+        this.state = { ...this.state, activeOverlay: { type: "emergency_message", data: p, expiresAt: undefined } };
+        break;
+      case "AUDIO_COMMAND":
+        // Audio commands are forwarded to clients but don't change server state much
+        if (p.action === "play") {
+          this.state = { ...this.state, audioMode: (p.mode as AudioMode) ?? "file" };
+        } else if (p.action === "stop") {
+          this.state = { ...this.state, audioMode: "silence" };
+        }
+        break;
+      case "ARTIST_INTRO":
+        this.state = { ...this.state, activeOverlay: { type: "artist_intro", data: p, expiresAt: p.duration ? Date.now() + (p.duration as number) : undefined } };
+        break;
+      case "ARTIST_ANIMATION":
+        // Just forwarded to clients
+        break;
+      case "CHAT_REMOVE":
+        // Just forwarded to clients
         break;
       default:
         break;
