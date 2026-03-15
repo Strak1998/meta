@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Copy, Users, CheckCheck } from "lucide-react";
 
-export default function TopBar() {
+interface TopBarProps {
+  viewers?: number;
+  isLive?: boolean;
+}
+
+export default function TopBar({ viewers = 0, isLive = true }: TopBarProps) {
   const [copied, setCopied] = useState(false);
 
   const copyLink = () => {
@@ -17,35 +19,128 @@ export default function TopBar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 glassmorphism border-b border-white/4 sm:px-6">
-      {/* Logo */}
-      <div className="flex items-center gap-3">
-        <span className="font-heading text-lg font-black tracking-wider text-gradient sm:text-xl">
+    <nav
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 100,
+        height: 48,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "0 20px",
+        background: "var(--glass-bg)",
+        backdropFilter: "var(--glass-blur)",
+        WebkitBackdropFilter: "var(--glass-blur)",
+        borderBottom: "var(--glass-border)",
+        boxShadow: "var(--glass-shadow)",
+      }}
+    >
+      {/* Left: Logo + Label */}
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <span
+          style={{
+            fontFamily: "var(--font-orbitron), sans-serif",
+            fontWeight: 900,
+            fontSize: 18,
+            color: "var(--accent-primary)",
+            letterSpacing: "0.3em",
+          }}
+        >
           DUA
         </span>
-        <Badge className="border-none bg-red-600/80 text-[9px] font-bold tracking-[0.2em] text-white animate-pulse">
-          AO VIVO
-        </Badge>
+        <span
+          className="hidden-mobile-640"
+          style={{
+            width: 1,
+            height: 16,
+            background: "rgba(255,255,255,0.08)",
+            margin: "0 16px",
+            flexShrink: 0,
+          }}
+        />
+        <span
+          className="hidden-mobile-640"
+          style={{
+            fontFamily: "var(--font-orbitron), sans-serif",
+            fontWeight: 400,
+            fontSize: 9,
+            color: "var(--text-muted)",
+            letterSpacing: "0.4em",
+            textTransform: "uppercase",
+          }}
+        >
+          METAVERSO DA LUA
+        </span>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          variant="ghost"
-          className="hidden gap-1.5 text-xs text-white/50 hover:text-white sm:flex"
+      {/* Center: AO VIVO badge */}
+      {isLive && (
+        <span
+          style={{
+            position: "absolute",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "#dc2626",
+            fontFamily: "var(--font-orbitron), sans-serif",
+            fontWeight: 700,
+            fontSize: 8,
+            color: "#fff",
+            letterSpacing: "0.35em",
+            padding: "4px 10px",
+            borderRadius: "var(--radius-sm)",
+            textTransform: "uppercase",
+          }}
         >
-          <Users className="h-3.5 w-3.5" /> Convidar DJ
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-1.5 border-cyan-500/20 text-xs text-cyan-300/80 hover:bg-cyan-500/8 hover:text-cyan-200"
+          AO VIVO
+        </span>
+      )}
+
+      {/* Right: Viewers + Copy Link */}
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "var(--radius-full)",
+              background: "var(--accent-success)",
+              boxShadow: "0 0 6px var(--accent-success)",
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "var(--font-montserrat), sans-serif",
+              fontWeight: 500,
+              fontSize: 12,
+              color: "var(--text-secondary)",
+            }}
+          >
+            {viewers}
+          </span>
+        </div>
+        <button
           onClick={copyLink}
+          style={{
+            fontFamily: "var(--font-orbitron), sans-serif",
+            fontWeight: 400,
+            fontSize: 9,
+            letterSpacing: "0.2em",
+            textTransform: "uppercase",
+            color: copied ? "var(--accent-primary)" : "var(--text-secondary)",
+            background: "transparent",
+            border: `1px solid ${copied ? "var(--border-active)" : "var(--border-default)"}`,
+            borderRadius: "var(--radius-md)",
+            padding: "6px 12px",
+            cursor: "pointer",
+            transition: "border-color var(--duration-base), color var(--duration-base)",
+          }}
         >
-          {copied ? <CheckCheck className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-          {copied ? "Copiado!" : "Copiar Link"}
-        </Button>
+          {copied ? "COPIADO" : "COPIAR LINK"}
+        </button>
       </div>
     </nav>
   );

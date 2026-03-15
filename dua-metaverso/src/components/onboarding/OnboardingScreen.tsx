@@ -3,8 +3,6 @@
 import { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import type * as THREE from "three";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { LUSOPHONE_COUNTRIES, OTHER_COUNTRIES } from "@/lib/countries";
 import { FACE_CONFIGS, FACE_IDS } from "@/lib/avatar-faces";
 import { BODY_CONFIGS, BODY_IDS, BODY_TO_STYLE } from "@/lib/avatar-bodies";
@@ -101,42 +99,102 @@ export default function OnboardingScreen({ onJoin }: OnboardingScreenProps) {
   const bodyAccent = BODY_CONFIGS[body].accent;
 
   return (
-    <div className={`fixed inset-0 z-[200] flex items-center justify-center bg-[#030305]/95 transition-opacity duration-[600ms] ${fadeOut ? "opacity-0" : "opacity-100"}`}>
+    <div className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-[600ms] ${fadeOut ? "opacity-0" : "opacity-100"}`} style={{ background: "var(--bg-overlay)" }}>
       <div
-        className="mx-4 w-full max-w-lg overflow-y-auto rounded-2xl border border-white/8 p-6 sm:p-8"
-        style={{ background: "linear-gradient(135deg, rgba(6,6,18,0.98), rgba(3,3,5,0.98))", maxHeight: "92vh" }}
+        className="mx-4 w-full max-w-[480px] overflow-y-auto p-8"
+        style={{
+          background: "var(--glass-bg)",
+          backdropFilter: "var(--glass-blur)",
+          WebkitBackdropFilter: "var(--glass-blur)",
+          border: "var(--glass-border)",
+          boxShadow: "var(--glass-shadow)",
+          borderRadius: "var(--radius-sm)",
+          maxHeight: "92vh",
+          padding: "32px",
+        }}
       >
-        <h1 className="mb-1 font-heading text-lg font-black tracking-[0.15em] text-white uppercase sm:text-xl">
-          Entrar no Concerto
+        <h1
+          style={{
+            fontFamily: "var(--font-orbitron), sans-serif",
+            fontWeight: 900,
+            fontSize: "clamp(2.5rem, 6vw, 5rem)",
+            color: "var(--text-primary)",
+            textAlign: "center",
+            marginBottom: 32,
+            letterSpacing: "0.08em",
+            lineHeight: 1.1,
+          }}
+        >
+          DUA
         </h1>
-        <p className="mb-5 text-[11px] leading-relaxed text-white/30 sm:text-xs">
-          Escolhe o teu nome, rosto, corpo e país para entrar no metaverso.
-        </p>
 
         {/* Name + Combined Preview Row */}
-        <div className="mb-5 flex gap-4">
-          <div className="flex-1">
-            <label className="mb-1.5 block text-[10px] font-heading tracking-[0.2em] text-white/40 uppercase">
+        <div style={{ display: "flex", gap: 16, marginBottom: 24 }}>
+          <div style={{ flex: 1 }}>
+            <label
+              style={{
+                display: "block",
+                fontFamily: "var(--font-orbitron), sans-serif",
+                fontWeight: 400,
+                fontSize: "0.625rem",
+                letterSpacing: "0.3em",
+                textTransform: "uppercase",
+                color: "var(--text-muted)",
+                marginBottom: 6,
+              }}
+            >
               Nome
             </label>
-            <Input
+            <input
               ref={nameRef}
-              className="border-white/8 bg-white/4 text-white placeholder-white/20"
+              type="text"
               placeholder="O teu nome"
               maxLength={30}
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: "none",
+                borderBottom: "0.5px solid var(--border-default)",
+                padding: "8px 0",
+                fontFamily: "var(--font-montserrat), sans-serif",
+                fontWeight: 500,
+                fontSize: 14,
+                color: "var(--text-primary)",
+                outline: "none",
+                transition: "border-color var(--duration-base)",
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderBottomColor = "var(--accent-primary)"; }}
+              onBlur={(e) => { e.currentTarget.style.borderBottomColor = "var(--border-default)"; }}
             />
           </div>
           {/* Combined Avatar Preview */}
-          <div className="flex flex-col items-center">
-            <label className="mb-1.5 block text-[10px] font-heading tracking-[0.2em] text-white/40 uppercase">
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <label
+              style={{
+                display: "block",
+                fontFamily: "var(--font-orbitron), sans-serif",
+                fontWeight: 400,
+                fontSize: "0.625rem",
+                letterSpacing: "0.3em",
+                textTransform: "uppercase",
+                color: "var(--text-muted)",
+                marginBottom: 6,
+              }}
+            >
               Preview
             </label>
             <div
-              className="overflow-hidden rounded-lg border"
-              style={{ width: 120, height: 200, borderColor: bodyAccent, background: "rgba(255,255,255,0.02)" }}
+              style={{
+                width: 120,
+                height: 200,
+                overflow: "hidden",
+                borderRadius: "var(--radius-md)",
+                border: `1px solid ${bodyAccent}`,
+                background: "rgba(255,255,255,0.02)",
+              }}
             >
               <Canvas
                 camera={{ position: [0, 0.3, 1.8], fov: 40 }}
@@ -150,17 +208,28 @@ export default function OnboardingScreen({ onJoin }: OnboardingScreenProps) {
               </Canvas>
             </div>
             {selectedCountry && (
-              <span className="mt-1 text-[10px] text-white/40">{selectedCountry.flag}</span>
+              <span style={{ marginTop: 4, fontSize: 10, color: "var(--text-muted)" }}>{selectedCountry.flag}</span>
             )}
           </div>
         </div>
 
         {/* Face Selection */}
-        <div className="mb-4">
-          <label className="mb-1.5 block text-[10px] font-heading tracking-[0.2em] text-white/40 uppercase">
+        <div style={{ marginBottom: 24 }}>
+          <label
+            style={{
+              display: "block",
+              fontFamily: "var(--font-orbitron), sans-serif",
+              fontWeight: 400,
+              fontSize: "0.625rem",
+              letterSpacing: "0.3em",
+              textTransform: "uppercase",
+              color: "var(--text-muted)",
+              marginBottom: 6,
+            }}
+          >
             Rosto
           </label>
-          <div className="flex gap-2 sm:gap-3">
+          <div style={{ display: "flex", gap: 8 }}>
             {FACE_IDS.map((id) => {
               const cfg = FACE_CONFIGS[id];
               const selected = id === face;
@@ -169,16 +238,21 @@ export default function OnboardingScreen({ onJoin }: OnboardingScreenProps) {
                   key={id}
                   type="button"
                   onClick={() => setFace(id)}
-                  className="flex-1 flex flex-col items-center rounded-lg border px-1 py-2 text-center transition-all"
                   style={{
-                    borderColor: selected ? bodyAccent : "rgba(255,255,255,0.08)",
-                    background: selected
-                      ? `linear-gradient(135deg, ${bodyAccent}15, ${bodyAccent}08)`
-                      : "rgba(255,255,255,0.02)",
-                    opacity: selected ? 1 : 0.55,
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    padding: "8px 4px",
+                    border: `1px solid ${selected ? "var(--border-active)" : "var(--border-subtle)"}`,
+                    borderRadius: "var(--radius-md)",
+                    background: selected ? "rgba(0,255,204,0.05)" : "transparent",
+                    opacity: selected ? 1 : 0.45,
+                    cursor: "pointer",
+                    transition: "border-color var(--duration-base), opacity var(--duration-base), background var(--duration-base)",
                   }}
                 >
-                  <div className="overflow-hidden rounded" style={{ width: 80, height: 80 }}>
+                  <div style={{ width: 80, height: 80, overflow: "hidden", borderRadius: "var(--radius-sm)" }}>
                     <Canvas
                       camera={{ position: [0, 0, 0.55], fov: 40 }}
                       gl={{ antialias: true, alpha: true }}
@@ -193,8 +267,15 @@ export default function OnboardingScreen({ onJoin }: OnboardingScreenProps) {
                     </Canvas>
                   </div>
                   <span
-                    className="mt-1 block text-[9px] font-heading font-bold tracking-wider"
-                    style={{ color: selected ? bodyAccent : "rgba(255,255,255,0.4)" }}
+                    style={{
+                      marginTop: 4,
+                      fontFamily: "var(--font-orbitron), sans-serif",
+                      fontWeight: 400,
+                      fontSize: 9,
+                      letterSpacing: "0.2em",
+                      textTransform: "uppercase",
+                      color: selected ? bodyAccent : "var(--text-muted)",
+                    }}
                   >
                     {cfg.label.toUpperCase()}
                   </span>
@@ -205,11 +286,22 @@ export default function OnboardingScreen({ onJoin }: OnboardingScreenProps) {
         </div>
 
         {/* Body Selection */}
-        <div className="mb-4">
-          <label className="mb-1.5 block text-[10px] font-heading tracking-[0.2em] text-white/40 uppercase">
+        <div style={{ marginBottom: 24 }}>
+          <label
+            style={{
+              display: "block",
+              fontFamily: "var(--font-orbitron), sans-serif",
+              fontWeight: 400,
+              fontSize: "0.625rem",
+              letterSpacing: "0.3em",
+              textTransform: "uppercase",
+              color: "var(--text-muted)",
+              marginBottom: 6,
+            }}
+          >
             Corpo
           </label>
-          <div className="flex gap-2 sm:gap-3">
+          <div style={{ display: "flex", gap: 8 }}>
             {BODY_IDS.map((id) => {
               const cfg = BODY_CONFIGS[id];
               const selected = id === body;
@@ -218,16 +310,21 @@ export default function OnboardingScreen({ onJoin }: OnboardingScreenProps) {
                   key={id}
                   type="button"
                   onClick={() => setBody(id)}
-                  className="flex-1 flex flex-col items-center rounded-lg border px-1 py-2 text-center transition-all"
                   style={{
-                    borderColor: selected ? cfg.accent : "rgba(255,255,255,0.08)",
-                    background: selected
-                      ? `linear-gradient(135deg, ${cfg.accent}15, ${cfg.accent}08)`
-                      : "rgba(255,255,255,0.02)",
-                    opacity: selected ? 1 : 0.55,
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    padding: "8px 4px",
+                    border: `1px solid ${selected ? "var(--border-active)" : "var(--border-subtle)"}`,
+                    borderRadius: "var(--radius-md)",
+                    background: selected ? `rgba(0,255,204,0.05)` : "transparent",
+                    opacity: selected ? 1 : 0.45,
+                    cursor: "pointer",
+                    transition: "border-color var(--duration-base), opacity var(--duration-base), background var(--duration-base)",
                   }}
                 >
-                  <div className="overflow-hidden rounded" style={{ width: 80, height: 120 }}>
+                  <div style={{ width: 80, height: 120, overflow: "hidden", borderRadius: "var(--radius-sm)" }}>
                     <Canvas
                       camera={{ position: [0, 0, 1.6], fov: 40 }}
                       gl={{ antialias: true, alpha: true }}
@@ -240,8 +337,15 @@ export default function OnboardingScreen({ onJoin }: OnboardingScreenProps) {
                     </Canvas>
                   </div>
                   <span
-                    className="mt-1 block text-[9px] font-heading font-bold tracking-wider"
-                    style={{ color: selected ? cfg.accent : "rgba(255,255,255,0.4)" }}
+                    style={{
+                      marginTop: 4,
+                      fontFamily: "var(--font-orbitron), sans-serif",
+                      fontWeight: 400,
+                      fontSize: 9,
+                      letterSpacing: "0.2em",
+                      textTransform: "uppercase",
+                      color: selected ? cfg.accent : "var(--text-muted)",
+                    }}
                   >
                     {cfg.label.toUpperCase()}
                   </span>
@@ -252,17 +356,49 @@ export default function OnboardingScreen({ onJoin }: OnboardingScreenProps) {
         </div>
 
         {/* Country */}
-        <div className="mb-5">
-          <label className="mb-1.5 block text-[10px] font-heading tracking-[0.2em] text-white/40 uppercase">
+        <div style={{ marginBottom: 24 }}>
+          <label
+            style={{
+              display: "block",
+              fontFamily: "var(--font-orbitron), sans-serif",
+              fontWeight: 400,
+              fontSize: "0.625rem",
+              letterSpacing: "0.3em",
+              textTransform: "uppercase",
+              color: "var(--text-muted)",
+              marginBottom: 6,
+            }}
+          >
             País {selectedCountry ? selectedCountry.flag : ""}
           </label>
-          <Input
-            className="mb-2 border-white/8 bg-white/4 text-white placeholder-white/20"
+          <input
+            type="text"
             placeholder="Pesquisar país..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: "100%",
+              background: "transparent",
+              border: "none",
+              borderBottom: "0.5px solid var(--border-default)",
+              padding: "8px 0",
+              fontFamily: "var(--font-montserrat), sans-serif",
+              fontWeight: 400,
+              fontSize: 13,
+              color: "var(--text-primary)",
+              outline: "none",
+              marginBottom: 8,
+            }}
           />
-          <div className="max-h-28 overflow-y-auto rounded-lg border border-white/5 bg-white/2 sm:max-h-32">
+          <div
+            style={{
+              maxHeight: 112,
+              overflowY: "auto",
+              border: "1px solid var(--border-subtle)",
+              borderRadius: "var(--radius-md)",
+              background: "rgba(255,255,255,0.02)",
+            }}
+          >
             {filteredCountries.lusophone.length > 0 && (
               <>
                 {filteredCountries.lusophone.map((c) => (
@@ -270,15 +406,30 @@ export default function OnboardingScreen({ onJoin }: OnboardingScreenProps) {
                     key={c.code}
                     type="button"
                     onClick={() => { setCountry(c.code); setSearch(""); }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-white/5"
-                    style={{ color: c.code === country ? bodyAccent : "rgba(255,255,255,0.6)" }}
+                    style={{
+                      display: "flex",
+                      width: "100%",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "6px 12px",
+                      textAlign: "left",
+                      fontFamily: "var(--font-montserrat), sans-serif",
+                      fontSize: 12,
+                      color: c.code === country ? bodyAccent : "var(--text-secondary)",
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      transition: "background var(--duration-fast)",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                   >
                     <span>{c.flag}</span>
                     <span>{c.name}</span>
                   </button>
                 ))}
                 {filteredCountries.other.length > 0 && (
-                  <div className="mx-3 my-1 h-px bg-white/8" />
+                  <div style={{ margin: "4px 12px", height: 1, background: "var(--border-subtle)" }} />
                 )}
               </>
             )}
@@ -287,8 +438,22 @@ export default function OnboardingScreen({ onJoin }: OnboardingScreenProps) {
                 key={c.code}
                 type="button"
                 onClick={() => { setCountry(c.code); setSearch(""); }}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-white/5"
-                style={{ color: c.code === country ? bodyAccent : "rgba(255,255,255,0.6)" }}
+                style={{
+                  display: "flex",
+                  width: "100%",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "6px 12px",
+                  textAlign: "left",
+                  fontFamily: "var(--font-montserrat), sans-serif",
+                  fontSize: 12,
+                  color: c.code === country ? bodyAccent : "var(--text-secondary)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
                 <span>{c.flag}</span>
                 <span>{c.name}</span>
@@ -298,17 +463,32 @@ export default function OnboardingScreen({ onJoin }: OnboardingScreenProps) {
         </div>
 
         {/* Submit */}
-        <Button
-          className="w-full font-heading text-sm font-bold tracking-wider disabled:opacity-40"
-          style={{
-            background: "linear-gradient(135deg, #00ccaa, #00ffcc, #a855f6, #ff00ff)",
-            minHeight: "var(--touch-min)",
-          }}
+        <button
           onClick={handleSubmit}
           disabled={submitting}
+          style={{
+            width: "100%",
+            height: 44,
+            borderRadius: "var(--radius-sm)",
+            background: "linear-gradient(135deg, #00ffcc, #00ddaa)",
+            border: "none",
+            fontFamily: "var(--font-orbitron), sans-serif",
+            fontWeight: 900,
+            fontSize: 11,
+            letterSpacing: "0.4em",
+            color: "#030305",
+            cursor: submitting ? "default" : "pointer",
+            opacity: submitting ? 0.4 : 1,
+            transition: "filter var(--duration-fast), transform var(--duration-fast)",
+            textTransform: "uppercase",
+          }}
+          onMouseEnter={(e) => { if (!submitting) e.currentTarget.style.filter = "brightness(1.1)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.filter = ""; }}
+          onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.99)"; }}
+          onMouseUp={(e) => { e.currentTarget.style.transform = ""; }}
         >
           {submitting ? "A ENTRAR..." : "ENTRAR"}
-        </Button>
+        </button>
       </div>
     </div>
   );

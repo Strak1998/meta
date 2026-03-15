@@ -38,7 +38,7 @@ export default function ArtistsPage() {
     setSlots(next);
   };
 
-  const inp: React.CSSProperties = { width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"10px 14px",color:"#fff",fontSize:13,outline:"none",fontFamily:"Montserrat,sans-serif",boxSizing:"border-box" };
+  const inp: React.CSSProperties = { width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"var(--radius-md)",padding:"10px 14px",color:"#fff",fontSize:13,outline:"none",fontFamily:"Montserrat,sans-serif",boxSizing:"border-box" };
   const lbl: React.CSSProperties = { display:"block",fontSize:9,color:"#555",letterSpacing:2,marginBottom:6 };
 
   return (
@@ -51,13 +51,13 @@ export default function ArtistsPage() {
           </div>
           <div style={{display:"flex",gap:12,alignItems:"center"}}>
             {saved&&<span style={{fontSize:11,color:"#00ff88",letterSpacing:2}}>GUARDADO</span>}
-            <a href="/backstage" style={{padding:"10px 18px",background:"transparent",border:"1px solid rgba(0,255,204,0.3)",borderRadius:8,color:"#00ffcc",fontSize:11,letterSpacing:2,textDecoration:"none"}}>← BACKSTAGE</a>
+            <a href="/backstage" style={{padding:"10px 18px",background:"transparent",border:"1px solid rgba(0,255,204,0.3)",borderRadius:"var(--radius-md)",color:"#00ffcc",fontSize:11,letterSpacing:2,textDecoration:"none"}}>← BACKSTAGE</a>
           </div>
         </div>
 
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           {slots.map((s,i)=>(
-            <div key={s.id} style={{background:"rgba(0,0,0,0.5)",border:`1px solid ${s.name?s.accentColor+"33":"rgba(255,255,255,0.08)"}`,borderRadius:12,overflow:"hidden"}}>
+            <div key={s.id} style={{background:"rgba(0,0,0,0.5)",border:`1px solid ${s.name?s.accentColor+"33":"rgba(255,255,255,0.08)"}`,borderRadius:"var(--radius-md)",overflow:"hidden"}}>
               <div style={{display:"flex",alignItems:"center",gap:14,padding:"16px 20px",background:editId===s.id?`${s.accentColor}0a`:"transparent"}}>
                 <div style={{display:"flex",flexDirection:"column",gap:4}}>
                   <button onClick={()=>move(i,-1)} disabled={i===0} style={{background:"transparent",border:"1px solid #333",borderRadius:4,color:"#555",cursor:i===0?"default":"pointer",padding:"2px 6px",fontSize:10,opacity:i===0?0.2:1}}>▲</button>
@@ -71,9 +71,9 @@ export default function ArtistsPage() {
                   {s.bio&&<div style={{fontSize:11,color:"#666",marginTop:2,fontFamily:"Montserrat,sans-serif"}}>{s.bio}</div>}
                 </div>
                 <div style={{display:"flex",gap:8}}>
-                  {s.name&&previewId!==s.id&&<button onClick={()=>test(s)} style={{padding:"6px 12px",background:"transparent",border:`1px solid ${s.accentColor}44`,borderRadius:6,color:s.accentColor,fontSize:10,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:1}}>TEST</button>}
+                  {s.name&&previewId!==s.id&&<button onClick={()=>test(s)} style={{padding:"6px 12px",background:"transparent",border:`1px solid ${s.accentColor}44`,borderRadius:"var(--radius-md)",color:s.accentColor,fontSize:10,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:1}}>TEST</button>}
                   {previewId===s.id&&<div style={{fontSize:10,color:s.accentColor,letterSpacing:2}}>PREVIEW...</div>}
-                  <button onClick={()=>editId===s.id?cancel():startEdit(s)} style={{padding:"6px 14px",background:editId===s.id?"rgba(255,68,102,0.1)":"transparent",border:`1px solid ${editId===s.id?"rgba(255,68,102,0.3)":"#333"}`,borderRadius:6,color:editId===s.id?"#ff4466":"#666",fontSize:10,fontFamily:"Orbitron,sans-serif",cursor:"pointer"}}>{editId===s.id?"CANCELAR":"EDITAR"}</button>
+                  <button onClick={()=>editId===s.id?cancel():startEdit(s)} style={{padding:"6px 14px",background:editId===s.id?"rgba(255,68,102,0.1)":"transparent",border:`1px solid ${editId===s.id?"rgba(255,68,102,0.3)":"#333"}`,borderRadius:"var(--radius-md)",color:editId===s.id?"#ff4466":"#666",fontSize:10,fontFamily:"Orbitron,sans-serif",cursor:"pointer"}}>{editId===s.id?"CANCELAR":"EDITAR"}</button>
                 </div>
               </div>
 
@@ -93,14 +93,14 @@ export default function ArtistsPage() {
                     <div>
                       <label style={lbl}>POSICAO PADRAO</label>
                       <div style={{display:"flex",gap:6}}>
-                        {POSITIONS.map(p=><button key={p} onClick={()=>setDraft(d=>({...d,defaultPosition:p}))} style={{flex:1,padding:"8px 0",background:draft.defaultPosition===p?(draft.accentColor??"#00ffcc")+"22":"transparent",border:`1px solid ${draft.defaultPosition===p?(draft.accentColor??"#00ffcc"):"#333"}`,borderRadius:6,color:draft.defaultPosition===p?(draft.accentColor??"#00ffcc"):"#555",fontSize:9,fontFamily:"Orbitron,sans-serif",cursor:"pointer"}}>{p==="esquerda"?"ESQ":p==="centro"?"CTR":"DIR"}</button>)}
+                        {POSITIONS.map(p=><button key={p} onClick={()=>setDraft(d=>({...d,defaultPosition:p}))} style={{flex:1,padding:"8px 0",background:draft.defaultPosition===p?(draft.accentColor??"#00ffcc")+"22":"transparent",border:`1px solid ${draft.defaultPosition===p?(draft.accentColor??"#00ffcc"):"#333"}`,borderRadius:"var(--radius-md)",color:draft.defaultPosition===p?(draft.accentColor??"#00ffcc"):"#555",fontSize:9,fontFamily:"Orbitron,sans-serif",cursor:"pointer"}}>{p==="esquerda"?"ESQ":p==="centro"?"CTR":"DIR"}</button>)}
                       </div>
                     </div>
                     <div><label style={lbl}>MUSICA DE ENTRADA (URL)</label><input type="url" value={draft.entryMusicUrl??""} onChange={e=>setDraft(d=>({...d,entryMusicUrl:e.target.value||undefined}))} placeholder="https://..." style={inp}/></div>
                   </div>
                   <div style={{display:"flex",gap:10}}>
-                    <button onClick={save} style={{flex:1,padding:13,background:draft.accentColor??"#00ffcc",color:"#030305",border:"none",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:2}}>GUARDAR</button>
-                    <button onClick={cancel} style={{padding:"13px 24px",background:"transparent",border:"1px solid #333",borderRadius:8,color:"#666",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer"}}>CANCELAR</button>
+                    <button onClick={save} style={{flex:1,padding:13,background:draft.accentColor??"#00ffcc",color:"#030305",border:"none",borderRadius:"var(--radius-md)",fontSize:12,fontWeight:700,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:2}}>GUARDAR</button>
+                    <button onClick={cancel} style={{padding:"13px 24px",background:"transparent",border:"1px solid #333",borderRadius:"var(--radius-md)",color:"#666",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer"}}>CANCELAR</button>
                   </div>
                 </div>
               )}

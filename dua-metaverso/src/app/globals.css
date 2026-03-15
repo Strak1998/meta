@@ -88,6 +88,49 @@
   --sidebar-border: #00ffcc12;
   --sidebar-ring: #00ffcc;
 
+  /* ═══ DUA DESIGN SYSTEM TOKENS ═══ */
+
+  /* Backgrounds */
+  --bg-base: #030305;
+  --bg-surface: #08090f;
+  --bg-elevated: #0d0f1a;
+  --bg-overlay: rgba(3, 3, 5, 0.92);
+
+  /* Accents */
+  --accent-primary: #00ffcc;
+  --accent-secondary: #c084fc;
+  --accent-tertiary: #fbbf24;
+  --accent-danger: #ef4444;
+  --accent-success: #22c55e;
+
+  /* Text */
+  --text-primary: #f1f5f9;
+  --text-secondary: #64748b;
+  --text-muted: #334155;
+
+  /* Borders */
+  --border-subtle: rgba(0, 255, 204, 0.06);
+  --border-default: rgba(0, 255, 204, 0.12);
+  --border-active: rgba(0, 255, 204, 0.30);
+  --border-strong: rgba(0, 255, 204, 0.60);
+
+  /* Glassmorphism */
+  --glass-bg: rgba(8, 9, 15, 0.82);
+  --glass-blur: blur(24px) saturate(180%) brightness(1.05);
+  --glass-border: 0.5px solid rgba(0, 255, 204, 0.08);
+  --glass-shadow: 0 0 0 0.5px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.5), inset 0 0.5px 0 rgba(255,255,255,0.04);
+
+  /* Radii */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-full: 9999px;
+
+  /* Durations */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 400ms;
+  --duration-scene: 600ms;
+
   /* Responsive breakpoints as custom properties */
   --bp-mobile: 320px;
   --bp-mobile-landscape: 568px;
@@ -409,6 +452,11 @@
 .line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
 .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 
+/* Hide on mobile < 640px */
+@media (max-width: 639px) {
+  .hidden-mobile-640 { display: none !important; }
+}
+
 /* ===================================================
    RESPONSIVE CONCERT LAYOUT
    =================================================== */
@@ -611,4 +659,70 @@
 .connection-indicator[data-status="disconnected"] {
   background-color: var(--color-disconnected);
   box-shadow: 0 0 6px var(--color-disconnected);
+}
+
+/* ===================================================
+   MOBILE RESPONSIVENESS (Agent 4)
+   =================================================== */
+
+/* Use dvh for full-height containers */
+.h-full-dvh { height: 100dvh; }
+
+/* iOS Safari: prevent zoom on inputs below 16px */
+input, textarea, select {
+  font-size: max(16px, inherit);
+}
+@media (min-width: 768px) {
+  input, textarea, select {
+    font-size: inherit;
+  }
+}
+
+/* Canvas touch behavior */
+canvas { touch-action: none; }
+
+/* Safe area insets for bottom-fixed elements */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* 375px — iPhone SE / compact */
+@media (max-width: 639px) {
+  .hidden-mobile-640 { display: none !important; }
+}
+
+/* CTA Mobile: full-width banner at bottom */
+@media (max-width: 767px) {
+  [data-cta-button] {
+    width: calc(100% - 32px) !important;
+    bottom: 16px !important;
+    left: 16px !important;
+    right: 16px !important;
+    text-align: center !important;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Sidebar as drawer on mobile */
+@media (max-width: 767px) {
+  [data-sidebar] {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: calc(50dvh - 48px) !important;
+    width: 100vw !important;
+    border-left: none !important;
+    border-top: var(--glass-border) !important;
+    border-radius: 0 !important;
+    z-index: 40;
+  }
+}
+
+/* Tablet: two-column layout */
+@media (min-width: 768px) and (max-width: 1279px) {
+  [data-main-layout] {
+    display: grid !important;
+    grid-template-columns: 60% 40% !important;
+  }
 }

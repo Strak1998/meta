@@ -36,8 +36,8 @@ export function LiveOverlay({ concertState }: Props) {
 
       {type === "system_message" && (
         <div style={{ position:"absolute", bottom:"20%", left:"50%", transform:"translateX(-50%)", zIndex:50, textAlign:"center", maxWidth:"70vw", animation:"olFadeIn 0.4s ease" }}>
-          <div style={{ background:"rgba(0,0,0,0.85)", border:"1px solid rgba(0,255,204,0.4)", borderRadius:16, padding:"20px 32px", backdropFilter:"blur(20px)" }}>
-            <div style={{ fontSize:"clamp(16px,2.5vw,28px)", color:"#00ffcc", fontFamily:"Orbitron,sans-serif", fontWeight:700, letterSpacing:3 }}>
+          <div style={{ background:"var(--glass-bg)", border:"var(--glass-border)", borderRadius:"var(--radius-sm)", padding:"20px 32px", backdropFilter:"var(--glass-blur)" }}>
+            <div style={{ fontSize:"clamp(16px,2.5vw,28px)", color:"var(--accent-primary)", fontFamily:"var(--font-orbitron, Orbitron, sans-serif)", fontWeight:700, letterSpacing:3 }}>
               {data.message as string}
             </div>
           </div>
@@ -61,10 +61,10 @@ export function LiveOverlay({ concertState }: Props) {
       {type === "artist_intro" && <ArtistIntroOverlay name={(data.name as string) ?? ""} bio={(data.bio as string) ?? ""} />}
 
       {type === "emergency_message" && (
-        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:60, background:"rgba(180,0,0,0.75)", backdropFilter:"blur(6px)" }}>
-          <div style={{ textAlign:"center", border:"3px solid rgba(255,68,102,0.8)", borderRadius:20, padding:"40px 60px", animation:"emergencyPulse 1.5s infinite", background:"rgba(0,0,0,0.6)" }}>
-            <div style={{ fontSize:"clamp(10px,1.2vw,14px)", color:"#ff4466", fontFamily:"Orbitron,sans-serif", letterSpacing:6, marginBottom:16 }}>⚠ EMERGÊNCIA</div>
-            <div style={{ fontSize:"clamp(24px,5vw,60px)", color:"#ffffff", fontFamily:"Orbitron,sans-serif", fontWeight:900, letterSpacing:4 }}>
+        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:60, background:"rgba(239,68,68,0.15)", backdropFilter:"blur(6px)" }}>
+          <div style={{ textAlign:"center", border:"1px solid rgba(239,68,68,0.4)", borderRadius:"var(--radius-sm)", padding:"40px 60px", animation:"emergencyPulse 1.5s infinite", background:"rgba(0,0,0,0.6)" }}>
+            <div style={{ fontSize:"clamp(10px,1.2vw,14px)", color:"var(--accent-danger)", fontFamily:"var(--font-orbitron, Orbitron, sans-serif)", fontWeight:700, letterSpacing:6, marginBottom:16 }}>EMERGENCIA</div>
+            <div style={{ fontSize:"clamp(24px,5vw,60px)", color:"var(--accent-danger)", fontFamily:"var(--font-orbitron, Orbitron, sans-serif)", fontWeight:900, letterSpacing:4 }}>
               {(data.text as string) ?? "PAUSA TÉCNICA"}
             </div>
           </div>
@@ -101,19 +101,18 @@ function ArtistIntroOverlay({ name, bio }: { name: string; bio: string }) {
   return (
     <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:50, background:"rgba(0,0,0,0.80)", backdropFilter:"blur(6px)" }}>
       <div style={{ textAlign:"center" }}>
-        <div style={{ fontSize:"clamp(11px,1.5vw,16px)", color:"#888", fontFamily:"Orbitron,sans-serif", letterSpacing:6, marginBottom:20 }}>
+        <div style={{ fontSize:"clamp(11px,1.5vw,16px)", color:"var(--text-muted)", fontFamily:"var(--font-orbitron, Orbitron, sans-serif)", letterSpacing:6, marginBottom:20 }}>
           A SEGUIR NO PALCO
         </div>
-        {/* Spotlight effect */}
-        <div style={{ width:"clamp(200px,40vw,500px)", height:4, background:"linear-gradient(90deg, transparent, #ffd700, transparent)", margin:"0 auto 24px", opacity: revealedChars > 0 ? 1 : 0, transition:"opacity 0.5s" }} />
-        <div style={{ fontSize:"clamp(40px,9vw,100px)", fontFamily:"Orbitron,sans-serif", fontWeight:900, letterSpacing:6, minHeight:"1.2em" }}>
+        <div style={{ width:"clamp(200px,40vw,500px)", height:4, background:"linear-gradient(90deg, transparent, var(--accent-primary), transparent)", margin:"0 auto 24px", opacity: revealedChars > 0 ? 1 : 0, transition:"opacity 0.5s" }} />
+        <div style={{ fontSize:"clamp(40px,9vw,100px)", fontFamily:"var(--font-orbitron, Orbitron, sans-serif)", fontWeight:900, letterSpacing:6, minHeight:"1.2em" }}>
           {name.split("").map((ch, i) => (
-            <span key={i} style={{ color: i < revealedChars ? "#ffd700" : "transparent", textShadow: i < revealedChars ? "0 0 40px rgba(255,215,0,0.6)" : "none", transition:"color 0.15s, text-shadow 0.15s" }}>{ch}</span>
+            <span key={i} style={{ color: i < revealedChars ? "var(--accent-primary)" : "transparent", textShadow: i < revealedChars ? "0 0 40px rgba(0,255,204,0.6)" : "none", transition:"color 0.15s, text-shadow 0.15s" }}>{ch}</span>
           ))}
-          {revealedChars < name.length && <span style={{ color:"#ffd700", animation:"countPulse 0.5s infinite" }}>_</span>}
+          {revealedChars < name.length && <span style={{ color:"var(--accent-primary)", animation:"countPulse 0.5s infinite" }}>_</span>}
         </div>
         {showBio && bio && (
-          <div style={{ fontSize:"clamp(12px,1.8vw,20px)", color:"#aaa", marginTop:16, fontFamily:"Montserrat,sans-serif", letterSpacing:3, opacity:0, animation:"olFadeIn 0.6s ease forwards" }}>
+          <div style={{ fontSize:"clamp(12px,1.8vw,20px)", color:"var(--text-secondary)", marginTop:16, fontFamily:"var(--font-montserrat, Montserrat, sans-serif)", letterSpacing:3, maxWidth:480, margin:"16px auto 0", opacity:0, animation:"olFadeIn 0.6s ease forwards" }}>
             {bio}
           </div>
         )}

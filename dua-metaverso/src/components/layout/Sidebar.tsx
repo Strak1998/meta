@@ -1,9 +1,7 @@
 "use client";
 
-import { MessageSquare, Users as UsersIcon, Send, ListMusic, Shield } from "lucide-react";
+import { MessageSquare, ChevronRight } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ConcertPhase } from "@/types/artist";
 
 interface SidebarProps {
@@ -33,6 +31,14 @@ const REACTIONS = [
 ];
 
 const MAX_CHARS = 200;
+
+const tabLabelStyle: React.CSSProperties = {
+  fontFamily: "var(--font-orbitron, Orbitron, sans-serif)",
+  fontWeight: 400,
+  fontSize: 9,
+  letterSpacing: "0.3em",
+  textTransform: "uppercase",
+};
 
 export default function Sidebar({
   messages,
@@ -88,95 +94,149 @@ export default function Sidebar({
 
   const isDuaBot = (user: string) => user === "DUA Bot" || user === "Sistema";
 
+  const tabs = [
+    { id: "chat" as const, label: "CHAT" },
+    { id: "queue" as const, label: "FILA" },
+    ...(isHost ? [{ id: "host" as const, label: "HOST" }] : []),
+  ];
+
   return (
-    <aside className="flex h-full flex-col rounded-xl border border-cyan-400/10 bg-black/60 backdrop-blur-md">
+    <aside
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        background: "var(--glass-bg)",
+        backdropFilter: "var(--glass-blur)",
+        WebkitBackdropFilter: "var(--glass-blur)",
+        borderLeft: "var(--glass-border)",
+        borderRadius: "var(--radius-sm)",
+      }}
+    >
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-cyan-400/10 p-2">
-        <button
-          onClick={() => setActiveTab("chat")}
-          className={`flex-1 rounded px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${activeTab === "chat" ? "bg-cyan-500/20 text-cyan-400" : "text-white/40 hover:bg-white/5"}`}
-        >
-          <MessageSquare className="mx-auto mb-0.5 h-3.5 w-3.5" /> Chat
-        </button>
-        <button
-          onClick={() => setActiveTab("queue")}
-          className={`flex-1 rounded px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${activeTab === "queue" ? "bg-purple-500/20 text-purple-400" : "text-white/40 hover:bg-white/5"}`}
-        >
-          <ListMusic className="mx-auto mb-0.5 h-3.5 w-3.5" /> Fila
-        </button>
-        {isHost && (
+      <div style={{ display: "flex", borderBottom: "1px solid var(--border-subtle)", padding: "0 16px" }}>
+        {tabs.map((t) => (
           <button
-            onClick={() => setActiveTab("host")}
-            className={`flex-1 rounded px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${activeTab === "host" ? "bg-amber-500/20 text-amber-400" : "text-white/40 hover:bg-white/5"}`}
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            style={{
+              ...tabLabelStyle,
+              flex: 1,
+              padding: "12px 0",
+              background: "transparent",
+              border: "none",
+              borderBottom: activeTab === t.id ? "1px solid var(--accent-primary)" : "1px solid transparent",
+              color: activeTab === t.id ? "var(--text-primary)" : "var(--text-muted)",
+              cursor: "pointer",
+              transition: "color var(--duration-base), border-color var(--duration-base)",
+            }}
           >
-            <Shield className="mx-auto mb-0.5 h-3.5 w-3.5" /> Host
+            {t.label}
           </button>
-        )}
+        ))}
       </div>
 
       {/* Chat tab */}
       {activeTab === "chat" && (
         <>
-          <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-3" style={{ scrollBehavior: "smooth" }}>
-            <div className="space-y-3">
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            style={{ flex: 1, overflowY: "auto", padding: 12, scrollBehavior: "smooth" }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {messages.map((msg) => {
                 const isBot = isDuaBot(msg.user);
                 return (
-                  <div key={msg.id} className="text-sm" style={isBot ? { fontStyle: "italic" } : undefined}>
-                    {msg.flag && <span className="mr-1">{msg.flag}</span>}
-                    <span className="mr-1.5 font-bold" style={{ color: isBot ? "#888" : msg.accentColor || "#67e8f9" }}>{msg.user}:</span>
-                    <span className={isBot ? "text-white/50" : "text-white/80"}>{msg.text}</span>
+                  <div key={msg.id} style={{ fontFamily: "var(--font-montserrat, Montserrat, sans-serif)", fontSize: 13, fontStyle: isBot ? "italic" : "normal" }}>
+                    {msg.flag && <span style={{ marginRight: 4 }}>{msg.flag}</span>}
+                    <span style={{ fontWeight: 600, color: isBot ? "var(--text-secondary)" : msg.accentColor || "#67e8f9", marginRight: 6 }}>{msg.user}:</span>
+                    <span style={{ color: isBot ? "var(--text-secondary)" : "var(--text-primary)" }}>{msg.text}</span>
                   </div>
                 );
               })}
               {messages.length === 0 && (
-                <div className="flex flex-col items-center justify-center pt-10 text-center opacity-30">
-                  <MessageSquare className="mx-auto mb-2 h-8 w-8" />
-                  <p className="text-xs">O chat esta silencioso.<br />Se o primeiro a falar.</p>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 40, textAlign: "center", opacity: 0.3 }}>
+                  <MessageSquare style={{ width: 32, height: 32, marginBottom: 8, color: "var(--text-muted)" }} />
+                  <p style={{ fontFamily: "var(--font-montserrat, Montserrat, sans-serif)", fontSize: 12, color: "var(--text-muted)" }}>O chat esta silencioso.<br />Se o primeiro a falar.</p>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="space-y-2.5 border-t border-cyan-400/10 bg-black/40 p-3">
-            {/* Text reactions */}
-            <div className="flex justify-center gap-2">
+          <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "12px 16px" }}>
+            {/* Reactions */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 10 }}>
               {REACTIONS.map((r) => (
                 <button
                   key={r.label}
                   onClick={() => onReaction(r.label)}
-                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 transition hover:bg-cyan-400/20"
-                  style={{ color: r.color, fontFamily: "Orbitron, sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: 2 }}
+                  style={{
+                    fontFamily: "var(--font-orbitron, Orbitron, sans-serif)",
+                    fontWeight: 400,
+                    fontSize: 8,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase" as const,
+                    color: "var(--text-muted)",
+                    background: "transparent",
+                    border: "1px solid var(--border-subtle)",
+                    borderRadius: "var(--radius-md)",
+                    padding: "6px 10px",
+                    cursor: "pointer",
+                    transition: "border-color var(--duration-fast), color var(--duration-fast)",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--border-active)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-subtle)"; e.currentTarget.style.color = "var(--text-muted)"; }}
                 >
                   {r.label}
                 </button>
               ))}
             </div>
             {/* Input */}
-            <div className="flex gap-2">
-              <div className="relative flex-1">
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ flex: 1, position: "relative" }}>
                 <textarea
                   value={inputMsg}
                   onChange={handleInput}
                   onKeyDown={handleKeyDown}
-                  placeholder="Envia uma mensagem..."
+                  placeholder="Mensagem"
                   rows={1}
-                  className="h-10 w-full resize-none rounded-md border border-cyan-400/20 bg-black/50 px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-cyan-400/50"
-                  style={{ fontFamily: "Montserrat, sans-serif" }}
+                  style={{
+                    width: "100%",
+                    resize: "none",
+                    height: 36,
+                    background: "transparent",
+                    border: "none",
+                    padding: "8px 0",
+                    fontFamily: "var(--font-montserrat, Montserrat, sans-serif)",
+                    fontSize: 13,
+                    color: "var(--text-primary)",
+                    outline: "none",
+                  }}
                 />
                 {charWarn && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-amber-400">
+                  <span style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", fontFamily: "var(--font-montserrat, Montserrat, sans-serif)", fontSize: 9, color: "var(--accent-tertiary)" }}>
                     {inputMsg.length}/{MAX_CHARS}
                   </span>
                 )}
               </div>
-              <Button
+              <button
                 onClick={handleSubmit}
-                size="icon"
-                className="h-10 w-10 bg-cyan-500 text-black shadow-[0_0_10px_rgba(0,255,204,0.3)] hover:bg-cyan-400"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 4,
+                  display: "flex",
+                  alignItems: "center",
+                  transition: "color var(--duration-fast)",
+                  color: "var(--text-muted)",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent-primary)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
               >
-                <Send className="h-4 w-4" />
-              </Button>
+                <ChevronRight size={18} strokeWidth={1.5} />
+              </button>
             </div>
           </div>
         </>
@@ -184,63 +244,75 @@ export default function Sidebar({
 
       {/* Queue tab */}
       {activeTab === "queue" && (
-        <div className="flex flex-1 flex-col gap-4 p-4">
-          <div className="rounded-lg border border-purple-500/20 bg-purple-500/10 p-4 text-center">
-            <p className="mb-1 text-[10px] uppercase tracking-widest text-purple-400/70">A tocar agora</p>
-            <p className="mb-2 font-bold text-white">DUA - Rap Cosmico IA</p>
-            <div className="flex items-center justify-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-purple-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-purple-500" />
-              </span>
-              <span className="font-mono text-xs text-purple-300">128 BPM</span>
+        <div style={{ flex: 1, padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ border: "1px solid rgba(192,132,252,0.2)", background: "rgba(192,132,252,0.05)", borderRadius: "var(--radius-md)", padding: 16, textAlign: "center" }}>
+            <p style={{ ...tabLabelStyle, color: "var(--text-muted)", marginBottom: 4 }}>A TOCAR AGORA</p>
+            <p style={{ fontFamily: "var(--font-montserrat, Montserrat, sans-serif)", fontWeight: 700, fontSize: 14, color: "var(--text-primary)", marginBottom: 8 }}>DUA - Rap Cosmico IA</p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "var(--radius-full)", background: "var(--accent-secondary)", boxShadow: "0 0 6px var(--accent-secondary)" }} />
+              <span style={{ fontFamily: "monospace", fontSize: 12, color: "var(--accent-secondary)" }}>128 BPM</span>
             </div>
           </div>
-
-          <p className="mt-4 text-xs uppercase tracking-widest text-white/40">Proximas na fila</p>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between rounded bg-white/5 border border-white/10 p-3">
-              <div>
-                <p className="text-sm font-medium text-white/90">Crioulo Drill 2026</p>
-                <p className="text-[10px] text-cyan-400">Pedida por: Carlos</p>
+          <p style={{ ...tabLabelStyle, color: "var(--text-muted)", marginTop: 8 }}>PROXIMAS NA FILA</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[
+              { title: "Crioulo Drill 2026", by: "Carlos", dur: "2:14" },
+              { title: "Kizomba Espacial", by: "Maria", dur: "3:30", dim: true },
+            ].map((t) => (
+              <div key={t.title} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 12, background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", opacity: t.dim ? 0.5 : 1 }}>
+                <div>
+                  <p style={{ fontFamily: "var(--font-montserrat, Montserrat, sans-serif)", fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>{t.title}</p>
+                  <p style={{ fontFamily: "var(--font-montserrat, Montserrat, sans-serif)", fontSize: 10, color: "var(--accent-primary)" }}>Pedida por: {t.by}</p>
+                </div>
+                <span style={{ fontFamily: "monospace", fontSize: 12, color: "var(--text-muted)" }}>{t.dur}</span>
               </div>
-              <span className="text-xs text-white/30">2:14</span>
-            </div>
-            <div className="flex items-center justify-between rounded bg-white/5 border border-white/10 p-3 opacity-50">
-              <div>
-                <p className="text-sm font-medium text-white/90">Kizomba Espacial</p>
-                <p className="text-[10px] text-cyan-400">Pedida por: Maria</p>
-              </div>
-              <span className="text-xs text-white/30">3:30</span>
-            </div>
+            ))}
           </div>
         </div>
       )}
 
       {/* Host tab */}
       {activeTab === "host" && isHost && (
-        <div className="flex flex-1 flex-col gap-3 p-4">
-          <p className="text-[10px] uppercase tracking-widest text-amber-400/70">Maestro de Fases</p>
-          <div className="grid grid-cols-2 gap-2">
+        <div style={{ flex: 1, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          <p style={{ ...tabLabelStyle, color: "var(--text-muted)" }}>MAESTRO DE FASES</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {PHASES.map((p) => (
               <button
                 key={p.id}
                 onClick={() => onPhaseChange(p.id)}
-                className={`rounded px-2 py-2 text-[10px] font-bold uppercase tracking-wider transition-all ${
-                  concertPhase === p.id
-                    ? "border border-amber-400 bg-amber-400/20 text-amber-300"
-                    : "border border-white/8 bg-white/4 text-white/50 hover:bg-white/8"
-                }`}
+                style={{
+                  ...tabLabelStyle,
+                  fontSize: 9,
+                  padding: "10px 8px",
+                  background: concertPhase === p.id ? "rgba(0,255,204,0.08)" : "transparent",
+                  border: `1px solid ${concertPhase === p.id ? "var(--border-active)" : "var(--border-subtle)"}`,
+                  borderRadius: "var(--radius-md)",
+                  color: concertPhase === p.id ? "var(--accent-primary)" : "var(--text-muted)",
+                  cursor: "pointer",
+                  transition: "all var(--duration-base)",
+                }}
               >
                 {p.label}
               </button>
             ))}
           </div>
-
-          <div className="mt-4 border-t border-white/8 pt-4">
+          <div style={{ marginTop: 16, borderTop: "1px solid var(--border-subtle)", paddingTop: 16 }}>
             <button
               onClick={onTriggerConversion}
-              className="w-full rounded bg-gradient-to-r from-cyan-500 to-purple-500 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition hover:opacity-90"
+              style={{
+                width: "100%",
+                padding: "10px 16px",
+                background: "linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))",
+                border: "none",
+                borderRadius: "var(--radius-sm)",
+                fontFamily: "var(--font-orbitron, Orbitron, sans-serif)",
+                fontWeight: 700,
+                fontSize: 10,
+                letterSpacing: "0.2em",
+                color: "var(--bg-base)",
+                cursor: "pointer",
+                textTransform: "uppercase",
+              }}
             >
               Activar Modal de Conversao
             </button>

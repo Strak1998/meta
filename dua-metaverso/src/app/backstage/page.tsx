@@ -15,7 +15,7 @@ const PHASES = [
 
 type Tab = "maestro"|"artistas"|"audio"|"chat"|"dua"|"emergencia";
 
-const S: React.CSSProperties = { fontFamily:"Orbitron,sans-serif" };
+const S: React.CSSProperties = { fontFamily:"var(--font-orbitron, Orbitron, sans-serif)" };
 
 function fmt(ms: number) {
   const s=Math.floor(ms/1000); return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
@@ -198,21 +198,21 @@ export default function Backstage() {
 
   const phase=PHASES.find(p=>p.id===state.phase);
 
-  const headerStyle: React.CSSProperties = { background:"rgba(0,0,0,0.92)", borderBottom:"1px solid rgba(0,255,204,0.2)", padding:"10px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:100, gap:12 };
-  const tagStyle=(ok:boolean): React.CSSProperties => ({ fontSize:9, letterSpacing:2, padding:"3px 8px", borderRadius:4, background:ok?"rgba(0,255,100,0.15)":"rgba(255,68,102,0.15)", color:ok?"#00ff88":"#ff4466", border:`1px solid ${ok?"rgba(0,255,100,0.3)":"rgba(255,68,102,0.3)"}` });
-  const tabStyle=(active:boolean): React.CSSProperties => ({ padding:"13px 18px", background:"transparent", border:"none", borderBottom:active?"2px solid #00ffcc":"2px solid transparent", color:active?"#00ffcc":"#555", fontSize:10, letterSpacing:2, cursor:"pointer", fontFamily:"Orbitron,sans-serif" });
-  const bigBtn=(color:string,bg:string): React.CSSProperties => ({ padding:"16px 20px", background:bg, border:`2px solid ${color}`, borderRadius:10, color, fontSize:13, fontWeight:700, fontFamily:"Orbitron,sans-serif", letterSpacing:2, cursor:"pointer", width:"100%", textAlign:"left" });
-  const inp: React.CSSProperties = { width:"100%", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, padding:"10px 14px", color:"#fff", fontSize:13, outline:"none", fontFamily:"Montserrat,sans-serif", boxSizing:"border-box" };
-  const lbl: React.CSSProperties = { display:"block", fontSize:9, color:"#555", letterSpacing:2, marginBottom:6 };
+  const headerStyle: React.CSSProperties = { background:"var(--bg-overlay)", borderBottom:"1px solid var(--border-subtle)", padding:"10px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:100, gap:12 };
+  const tagStyle=(ok:boolean): React.CSSProperties => ({ fontSize:9, letterSpacing:"0.2em", padding:"3px 8px", borderRadius:"var(--radius-sm)", background:ok?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)", color:ok?"var(--accent-success)":"var(--accent-danger)", border:`1px solid ${ok?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"}` });
+  const tabStyle=(active:boolean): React.CSSProperties => ({ padding:"13px 18px", background:"transparent", border:"none", borderBottom:active?"1px solid var(--accent-primary)":"1px solid transparent", color:active?"var(--accent-primary)":"var(--text-muted)", fontSize:9, letterSpacing:"0.3em", cursor:"pointer", fontFamily:"var(--font-orbitron, Orbitron, sans-serif)", textTransform:"uppercase" });
+  const bigBtn=(color:string,bg:string): React.CSSProperties => ({ height:36, padding:"0 16px", background:"transparent", border:`1px solid var(--border-default)`, borderRadius:"var(--radius-sm)", color:"var(--text-secondary)", fontSize:9, fontWeight:400, fontFamily:"var(--font-orbitron, Orbitron, sans-serif)", letterSpacing:"0.15em", cursor:"pointer", width:"100%", textAlign:"left", transition:"border-color var(--duration-base), background var(--duration-base)" });
+  const inp: React.CSSProperties = { width:"100%", background:"transparent", border:"none", borderBottom:"0.5px solid var(--border-default)", borderRadius:0, padding:"10px 0", color:"var(--text-primary)", fontSize:13, outline:"none", fontFamily:"var(--font-montserrat, Montserrat, sans-serif)", boxSizing:"border-box", transition:"border-color var(--duration-base)" };
+  const lbl: React.CSSProperties = { display:"block", fontSize:"0.625rem", color:"var(--text-muted)", letterSpacing:"0.3em", marginBottom:6, fontFamily:"var(--font-orbitron, Orbitron, sans-serif)", fontWeight:400, textTransform:"uppercase" };
 
   return (
-    <div style={{minHeight:"100vh",background:"#030305",color:"#e8e8e8",...S,display:"flex",flexDirection:"column"}}>
+    <div style={{minHeight:"100vh",background:"var(--bg-base)",color:"var(--text-primary)",...S,display:"flex",flexDirection:"column"}}>
       {/* HEADER */}
       <div style={headerStyle}>
         <div style={{display:"flex",alignItems:"center",gap:14}}>
-          <span style={{fontSize:11,color:"#00ffcc",letterSpacing:4}}>DUA</span>
-          <span style={{width:1,height:18,background:"#333"}}/>
-          <span style={{fontSize:11,letterSpacing:3,color:"#888"}}>BACKSTAGE</span>
+          <span style={{fontSize:11,color:"var(--accent-primary)",letterSpacing:"0.3em"}}>DUA</span>
+          <span style={{width:1,height:18,background:"rgba(255,255,255,0.08)"}}/>
+          <span style={{fontSize:11,letterSpacing:"0.6em",color:"var(--text-muted)",fontWeight:400}}>BACKSTAGE</span>
           <span style={tagStyle(connected)}>{connected?"ONLINE":"OFFLINE"}</span>
           {state.isPaused&&<span style={tagStyle(false)}>PAUSADO</span>}
         </div>
@@ -220,24 +220,24 @@ export default function Backstage() {
           <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",letterSpacing:2}}>FASE</div><div style={{fontSize:12,color:phase?.color??"#00ffcc",fontWeight:700}}>{phase?.label??state.phase.toUpperCase()}</div></div>
           <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",letterSpacing:2}}>DURACAO</div><div style={{fontSize:12,color:"#888",fontFamily:"monospace"}}>{fmt(phaseElapsed)}</div></div>
           <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",letterSpacing:2}}>ESPECT.</div><div style={{fontSize:12,color:"#00ffcc",fontWeight:700}}>{analytics.activeViewers}</div></div>
-          <a href="/" target="_blank" style={{padding:"8px 14px",background:"rgba(0,255,204,0.1)",border:"1px solid rgba(0,255,204,0.3)",borderRadius:8,color:"#00ffcc",fontSize:10,textDecoration:"none",letterSpacing:2}}>VER CONCERTO</a>
-          <a href="/backstage/artists" style={{padding:"8px 14px",background:"transparent",border:"1px solid #333",borderRadius:8,color:"#666",fontSize:10,textDecoration:"none",letterSpacing:2}}>ARTISTAS</a>
-          <button onClick={async()=>{await fetch("/api/backstage/auth",{method:"DELETE"});router.push("/backstage/login");}} style={{padding:"8px 14px",background:"transparent",border:"1px solid #333",borderRadius:8,color:"#555",fontSize:10,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:2}}>SAIR</button>
+          <a href="/" target="_blank" style={{padding:"8px 14px",background:"rgba(0,255,204,0.1)",border:"1px solid rgba(0,255,204,0.3)",borderRadius:"var(--radius-md)",color:"#00ffcc",fontSize:10,textDecoration:"none",letterSpacing:2}}>VER CONCERTO</a>
+          <a href="/backstage/artists" style={{padding:"8px 14px",background:"transparent",border:"1px solid #333",borderRadius:"var(--radius-md)",color:"#666",fontSize:10,textDecoration:"none",letterSpacing:2}}>ARTISTAS</a>
+          <button onClick={async()=>{await fetch("/api/backstage/auth",{method:"DELETE"});router.push("/backstage/login");}} style={{padding:"8px 14px",background:"transparent",border:"1px solid #333",borderRadius:"var(--radius-md)",color:"#555",fontSize:10,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:2}}>SAIR</button>
         </div>
       </div>
 
       {/* METRICS BAR */}
-      <div style={{background:"rgba(0,0,0,0.5)",borderBottom:"1px solid rgba(255,255,255,0.05)",padding:"7px 20px",display:"flex",gap:28}}>
+      <div style={{background:"var(--bg-surface)",borderBottom:"1px solid var(--border-subtle)",padding:"7px 20px",display:"flex",gap:28}}>
         {[["PICO",analytics.viewerPeak],["MSGS",analytics.messagesTotal],["CTA",analytics.ctaClicks],["CONV",`${analytics.conversionRate}%`]].map(([k,v])=>(
           <div key={k as string} style={{display:"flex",gap:8,alignItems:"center"}}>
-            <span style={{fontSize:9,color:"#555",letterSpacing:2}}>{k}</span>
-            <span style={{fontSize:12,color:"#888",fontFamily:"monospace"}}>{v}</span>
+            <span style={{fontSize:9,color:"var(--text-muted)",letterSpacing:"0.2em"}}>{k}</span>
+            <span style={{fontSize:12,color:"var(--text-secondary)",fontFamily:"monospace"}}>{v}</span>
           </div>
         ))}
       </div>
 
       {/* TABS */}
-      <div style={{display:"flex",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"rgba(0,0,0,0.4)",padding:"0 20px"}}>
+      <div style={{display:"flex",borderBottom:"1px solid var(--border-subtle)",background:"var(--bg-surface)",padding:"0 20px"}}>
         {(["maestro","artistas","audio","chat","dua","emergencia"] as Tab[]).map(t=>(
           <button key={t} onClick={()=>setTab(t)} style={tabStyle(tab===t)}>{t.toUpperCase()}</button>
         ))}
@@ -254,7 +254,10 @@ export default function Backstage() {
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
                 {PHASES.map(p=>{
                   const active=state.phase===p.id; const conf=confirm===p.id;
-                  return <button key={p.id} onClick={()=>handlePhase(p.id)} style={{padding:"20px 16px",background:active?`${p.color}22`:conf?`${p.color}15`:"rgba(0,0,0,0.4)",border:`2px solid ${active?p.color:conf?p.color+"88":"#222"}`,borderRadius:12,color:active?p.color:conf?p.color+"cc":"#555",fontSize:conf?10:13,fontWeight:700,fontFamily:"Orbitron,sans-serif",letterSpacing:2,cursor:active?"default":"pointer",boxShadow:active?`0 0 20px ${p.color}22`:undefined}}>
+                  const phaseIdx=PHASES.findIndex(x=>x.id===p.id);
+                  const currentIdx=PHASES.findIndex(x=>x.id===state.phase);
+                  const isPast=phaseIdx<currentIdx;
+                  return <button key={p.id} onClick={()=>handlePhase(p.id)} style={{padding:"20px 16px",background:active?`${p.color}22`:conf?`${p.color}15`:"var(--bg-surface)",border:`1px solid ${active?"var(--border-active)":conf?p.color+"88":"var(--border-subtle)"}`,borderRadius:"var(--radius-sm)",color:active?p.color:conf?p.color+"cc":"var(--text-muted)",fontSize:conf?10:13,fontWeight:active?700:400,fontFamily:"var(--font-orbitron, Orbitron, sans-serif)",letterSpacing:"0.15em",cursor:active?"default":"pointer",opacity:isPast?0.3:!active?0.5:1,textDecoration:isPast?"line-through":"none",position:"relative"}}>
                     {conf?`CONFIRMAR? ${p.label}`:active?`► ${p.label}`:p.label}
                   </button>;
                 })}
@@ -272,7 +275,7 @@ export default function Backstage() {
         {tab==="artistas"&&(
           <div>
             {/* INTRO MECHANISM */}
-            <div style={{marginBottom:24,padding:20,background:"rgba(0,0,0,0.5)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:12}}>
+            <div style={{marginBottom:24,padding:20,background:"var(--bg-surface)",border:"1px solid var(--border-subtle)",borderRadius:"var(--radius-sm)"}}>
               <div style={{fontSize:10,color:"#555",letterSpacing:3,marginBottom:12}}>REVELACAO DE ARTISTA</div>
               <div style={{display:"flex",gap:8,marginBottom:8}}>
                 <div style={{flex:1}}>
@@ -290,9 +293,9 @@ export default function Backstage() {
                   await cmd("ARTIST_INTRO",{name:artistName.trim(),bio:artistBio.trim()||undefined,progressive:true});
                 }}
                 disabled={!artistName.trim()}
-                style={{width:"100%",padding:16,background:artistName.trim()?"linear-gradient(135deg,#c084fc,#7c3aed)":"rgba(0,0,0,0.3)",border:"none",borderRadius:8,color:artistName.trim()?"#fff":"#444",fontSize:14,fontWeight:700,fontFamily:"Orbitron,sans-serif",cursor:artistName.trim()?"pointer":"default",letterSpacing:3,boxShadow:artistName.trim()?"0 0 30px rgba(192,132,252,0.3)":"none"}}
+                style={{width:"100%",height:36,padding:"0 16px",background:artistName.trim()?"linear-gradient(135deg, var(--accent-secondary), #7c3aed)":"var(--bg-surface)",border:artistName.trim()?"none":"1px solid var(--border-subtle)",borderRadius:"var(--radius-sm)",color:artistName.trim()?"#fff":"var(--text-muted)",fontSize:9,fontWeight:400,fontFamily:"var(--font-orbitron, Orbitron, sans-serif)",cursor:artistName.trim()?"pointer":"default",letterSpacing:"0.15em"}}
               >
-                ✦ REVELAR ARTISTA ✦
+                REVELAR ARTISTA
               </button>
             </div>
 
@@ -303,7 +306,7 @@ export default function Backstage() {
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:14}}>
               {state.artists.map((a:ArtistSlot)=>{
                 const on=a.status==="em_palco";
-                return <div key={a.id} style={{border:`1px solid ${a.name?a.accentColor+"44":"rgba(255,255,255,0.08)"}`,borderRadius:12,padding:18,background:on?`${a.accentColor}0a`:"rgba(0,0,0,0.4)",position:"relative"}}>
+                return <div key={a.id} style={{border:`1px solid ${a.name?a.accentColor+"44":"var(--border-subtle)"}`,borderRadius:"var(--radius-sm)",padding:18,background:on?`${a.accentColor}0a`:"var(--bg-surface)",position:"relative"}}>
                   {on&&<div style={{position:"absolute",top:-1,left:0,right:0,height:2,background:a.accentColor,borderRadius:"12px 12px 0 0",boxShadow:`0 0 12px ${a.accentColor}`}}/>}
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
                     <div>
@@ -315,14 +318,14 @@ export default function Backstage() {
                   </div>
                   {a.name&&!on&&a.status!=="saiu"&&(
                     <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>cmd("OVERLAY_SHOW",{overlayType:"artist_name",artistId:a.id,duration:3000})} style={{flex:1,padding:"8px 0",background:`${a.accentColor}22`,border:`1px solid ${a.accentColor}44`,borderRadius:8,color:a.accentColor,fontSize:10,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:1}}>REVEAL</button>
-                      <button onClick={()=>handleEnter(a,a.defaultPosition)} style={{flex:2,padding:"8px 0",background:a.accentColor,border:"none",borderRadius:8,color:"#030305",fontSize:11,fontWeight:700,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:1}}>ENTRADA</button>
+                      <button onClick={()=>cmd("OVERLAY_SHOW",{overlayType:"artist_name",artistId:a.id,duration:3000})} style={{flex:1,padding:"8px 0",background:`${a.accentColor}22`,border:`1px solid ${a.accentColor}44`,borderRadius:"var(--radius-md)",color:a.accentColor,fontSize:10,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:1}}>REVEAL</button>
+                      <button onClick={()=>handleEnter(a,a.defaultPosition)} style={{flex:2,padding:"8px 0",background:a.accentColor,border:"none",borderRadius:"var(--radius-md)",color:"#030305",fontSize:11,fontWeight:700,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:1}}>ENTRADA</button>
                     </div>
                   )}
                   {on&&(
                     <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>cmd("ARTIST_EXIT",{artistId:a.id})} style={{flex:2,padding:"8px 0",background:"rgba(255,68,102,0.2)",border:"1px solid rgba(255,68,102,0.5)",borderRadius:8,color:"#ff4466",fontSize:11,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:1}}>SAIDA</button>
-                      <button onClick={()=>cmd("SPOTLIGHT",{artistId:a.id})} style={{flex:1,padding:"8px 0",background:"rgba(255,215,0,0.15)",border:"1px solid rgba(255,215,0,0.4)",borderRadius:8,color:"#ffd700",fontSize:16,cursor:"pointer"}}>★</button>
+                      <button onClick={()=>cmd("ARTIST_EXIT",{artistId:a.id})} style={{flex:2,padding:"8px 0",background:"rgba(255,68,102,0.2)",border:"1px solid rgba(255,68,102,0.5)",borderRadius:"var(--radius-md)",color:"#ff4466",fontSize:11,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:1}}>SAIDA</button>
+                      <button onClick={()=>cmd("SPOTLIGHT",{artistId:a.id})} style={{flex:1,padding:"8px 0",background:"rgba(255,215,0,0.15)",border:"1px solid rgba(255,215,0,0.4)",borderRadius:"var(--radius-sm)",color:"#ffd700",fontSize:9,cursor:"pointer",fontFamily:"var(--font-orbitron, Orbitron, sans-serif)",letterSpacing:"0.15em"}}>SPOT</button>
                     </div>
                   )}
                 </div>;
@@ -338,7 +341,7 @@ export default function Backstage() {
             {/* Audio sub-tabs */}
             <div style={{display:"flex",gap:2,marginBottom:16}}>
               {(["ficheiro","stream","microfone"] as const).map(t=>(
-                <button key={t} onClick={()=>setAudioTab(t)} style={{flex:1,padding:"10px 0",background:audioTab===t?"rgba(0,255,204,0.15)":"rgba(0,0,0,0.4)",border:audioTab===t?"1px solid rgba(0,255,204,0.4)":"1px solid #222",borderRadius:8,color:audioTab===t?"#00ffcc":"#555",fontSize:10,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:2}}>{t.toUpperCase()}</button>
+                <button key={t} onClick={()=>setAudioTab(t)} style={{flex:1,padding:"10px 0",background:audioTab===t?"rgba(0,255,204,0.15)":"rgba(0,0,0,0.4)",border:audioTab===t?"1px solid rgba(0,255,204,0.4)":"1px solid #222",borderRadius:"var(--radius-md)",color:audioTab===t?"#00ffcc":"#555",fontSize:10,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:2}}>{t.toUpperCase()}</button>
               ))}
             </div>
             {/* FILE MODE */}
@@ -346,16 +349,16 @@ export default function Backstage() {
               <div style={{marginBottom:16}}>
                 <label style={lbl}>FICHEIRO DE AUDIO (MP3, WAV, OGG)</label>
                 <div style={{display:"flex",gap:8,marginBottom:12}}>
-                  <label style={{flex:1,padding:"12px 16px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:audioFileName?"#00ffcc":"#555",fontSize:12,cursor:"pointer",textAlign:"center"}}>
+                  <label style={{flex:1,padding:"12px 16px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"var(--radius-md)",color:audioFileName?"#00ffcc":"#555",fontSize:12,cursor:"pointer",textAlign:"center"}}>
                     {uploading?"A CARREGAR...":audioFileName||"ESCOLHER FICHEIRO"}
                     <input type="file" accept="audio/*" onChange={handleFileUpload} style={{display:"none"}} />
                   </label>
                 </div>
                 {audioFileUrl&&(
                   <div style={{display:"flex",gap:8}}>
-                    <button onClick={playFile} disabled={audioPlaying} style={{flex:1,padding:14,background:audioPlaying?"rgba(0,255,204,0.1)":"#00ffcc",color:audioPlaying?"#00ffcc":"#030305",border:"none",borderRadius:8,fontFamily:"Orbitron,sans-serif",fontSize:12,fontWeight:700,cursor:"pointer",letterSpacing:2}}>▶ PLAY</button>
-                    <button onClick={pauseAudio} disabled={!audioPlaying} style={{flex:1,padding:14,background:"rgba(255,215,0,0.15)",border:"1px solid rgba(255,215,0,0.4)",borderRadius:8,color:"#ffd700",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:2}}>⏸ PAUSAR</button>
-                    <button onClick={stopStream} style={{flex:1,padding:14,background:"rgba(255,68,102,0.15)",border:"1px solid rgba(255,68,102,0.4)",borderRadius:8,color:"#ff4466",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:2}}>⏹ STOP</button>
+                    <button onClick={playFile} disabled={audioPlaying} style={{flex:1,padding:14,background:audioPlaying?"rgba(0,255,204,0.1)":"#00ffcc",color:audioPlaying?"#00ffcc":"#030305",border:"none",borderRadius:"var(--radius-md)",fontFamily:"Orbitron,sans-serif",fontSize:12,fontWeight:700,cursor:"pointer",letterSpacing:2}}>▶ PLAY</button>
+                    <button onClick={pauseAudio} disabled={!audioPlaying} style={{flex:1,padding:14,background:"rgba(255,215,0,0.15)",border:"1px solid rgba(255,215,0,0.4)",borderRadius:"var(--radius-md)",color:"#ffd700",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:2}}>⏸ PAUSAR</button>
+                    <button onClick={stopStream} style={{flex:1,padding:14,background:"rgba(255,68,102,0.15)",border:"1px solid rgba(255,68,102,0.4)",borderRadius:"var(--radius-md)",color:"#ff4466",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:2}}>⏹ STOP</button>
                   </div>
                 )}
               </div>
@@ -366,15 +369,15 @@ export default function Backstage() {
                 <label style={lbl}>URL DO STREAM (Icecast / HLS / MP3)</label>
                 <div style={{display:"flex",gap:8}}>
                   <input type="url" placeholder="http://localhost:8000/stream.mp3" value={streamUrl} onChange={e=>setStreamUrl(e.target.value)} style={{...inp,flex:1}} />
-                  <button onClick={()=>startStream(streamUrl)} disabled={!streamUrl} style={{padding:"0 16px",background:"#00ffcc",color:"#030305",border:"none",borderRadius:8,fontFamily:"Orbitron,sans-serif",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:1}}>LIGAR</button>
-                  <button onClick={pauseAudio} style={{padding:"0 12px",background:"rgba(255,215,0,0.15)",border:"1px solid rgba(255,215,0,0.4)",borderRadius:8,color:"#ffd700",fontSize:11,fontFamily:"Orbitron,sans-serif",cursor:"pointer"}}>PAUSAR</button>
-                  <button onClick={stopStream} style={{padding:"0 12px",background:"transparent",border:"1px solid #333",borderRadius:8,color:"#666",fontSize:11,fontFamily:"Orbitron,sans-serif",cursor:"pointer"}}>STOP</button>
+                  <button onClick={()=>startStream(streamUrl)} disabled={!streamUrl} style={{padding:"0 16px",background:"#00ffcc",color:"#030305",border:"none",borderRadius:"var(--radius-md)",fontFamily:"Orbitron,sans-serif",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:1}}>LIGAR</button>
+                  <button onClick={pauseAudio} style={{padding:"0 12px",background:"rgba(255,215,0,0.15)",border:"1px solid rgba(255,215,0,0.4)",borderRadius:"var(--radius-md)",color:"#ffd700",fontSize:11,fontFamily:"Orbitron,sans-serif",cursor:"pointer"}}>PAUSAR</button>
+                  <button onClick={stopStream} style={{padding:"0 12px",background:"transparent",border:"1px solid #333",borderRadius:"var(--radius-md)",color:"#666",fontSize:11,fontFamily:"Orbitron,sans-serif",cursor:"pointer"}}>STOP</button>
                 </div>
               </div>
             )}
             {/* MICROFONE MODE */}
             {audioTab==="microfone"&&(
-              <div style={{marginBottom:16,padding:20,background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12}}>
+              <div style={{marginBottom:16,padding:20,background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:"var(--radius-md)"}}>
                 <div style={{fontSize:12,color:"#888",marginBottom:8}}>Modo microfone requer LiveKit configurado.</div>
                 <div style={{fontSize:11,color:"#555"}}>Configure LIVEKIT_API_KEY e LIVEKIT_API_SECRET nas variáveis de ambiente.</div>
               </div>
@@ -382,9 +385,9 @@ export default function Backstage() {
             {/* VU METER — 16 barras */}
             <div style={{marginBottom:16}}>
               <label style={lbl}>VU METER</label>
-              <div style={{display:"flex",gap:2,height:60,alignItems:"flex-end",background:"rgba(0,0,0,0.4)",borderRadius:8,padding:"8px 6px"}}>
+              <div style={{display:"flex",gap:3,height:60,alignItems:"flex-end",background:"var(--bg-surface)",borderRadius:"var(--radius-sm)",padding:"8px 6px"}}>
                 {vuBars.map((level,i)=>(
-                  <div key={i} style={{flex:1,height:`${Math.max(4,level)}%`,background:level>80?"#ff4466":level>50?"#ffd700":"#00ffcc",borderRadius:2,transition:"height 0.05s",minHeight:3}}/>
+                  <div key={i} style={{width:4,height:`${Math.max(4,level)}%`,background:level>70?"var(--accent-tertiary)":"var(--accent-primary)",borderRadius:"var(--radius-sm)",transition:"height 80ms",minHeight:3,opacity:level>4?1:0.2}}/>
                 ))}
               </div>
             </div>
@@ -396,7 +399,7 @@ export default function Backstage() {
                 <div style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",fontSize:10,color:"#888",fontFamily:"monospace"}}>{audioLevel}%</div>
               </div>
             </div>
-            <button onClick={handleMute} style={{width:"100%",padding:14,background:muted?"rgba(255,68,102,0.2)":"rgba(255,255,255,0.05)",border:`1px solid ${muted?"rgba(255,68,102,0.5)":"#333"}`,borderRadius:8,color:muted?"#ff4466":"#888",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:1}}>
+            <button onClick={handleMute} style={{width:"100%",padding:14,background:muted?"rgba(255,68,102,0.2)":"rgba(255,255,255,0.05)",border:`1px solid ${muted?"rgba(255,68,102,0.5)":"#333"}`,borderRadius:"var(--radius-md)",color:muted?"#ff4466":"#888",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:1}}>
               {muted?"MUTE ACTIVO — M PARA DESMUTAR":"MUTE (tecla M)"}
             </button>
           </div>
@@ -407,28 +410,28 @@ export default function Backstage() {
           <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:20,height:"calc(100vh - 220px)"}}>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
               <div style={{fontSize:10,color:"#555",letterSpacing:3}}>FEED DE MENSAGENS</div>
-              <div style={{flex:1,background:"rgba(0,0,0,0.4)",borderRadius:12,border:"1px solid rgba(255,255,255,0.06)",overflow:"auto",padding:14,display:"flex",flexDirection:"column",gap:8}}>
+              <div style={{flex:1,background:"rgba(0,0,0,0.4)",borderRadius:"var(--radius-md)",border:"1px solid rgba(255,255,255,0.06)",overflow:"auto",padding:14,display:"flex",flexDirection:"column",gap:8}}>
                 {messages.map((m)=>(
-                  <div key={m.id} style={{padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,0.02)",display:"flex",gap:10}}>
+                  <div key={m.id} style={{padding:"8px 10px",borderRadius:"var(--radius-md)",background:"rgba(255,255,255,0.02)",display:"flex",gap:10}}>
                     <div style={{flex:1}}>
                       <span style={{fontSize:11,color:"#00ffcc",fontWeight:600}}>{m.user}</span>
                       <span style={{fontSize:11,color:"#888",marginLeft:8,fontFamily:"monospace"}}>{new Date(m.timestamp).toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"})}</span>
                       <div style={{fontSize:13,color:"#ccc",marginTop:2,fontFamily:"Montserrat,sans-serif"}}>{m.text}</div>
                     </div>
-                    <button onClick={()=>cmd("CHAT_HIGHLIGHT",{messageId:m.id})} style={{background:"transparent",border:"1px solid #333",borderRadius:6,color:"#555",cursor:"pointer",padding:"4px 8px",fontSize:12}}>★</button>
+                    <button onClick={()=>cmd("CHAT_HIGHLIGHT",{messageId:m.id})} style={{background:"transparent",border:"1px solid var(--border-default)",borderRadius:"var(--radius-sm)",color:"var(--text-muted)",cursor:"pointer",padding:"4px 8px",fontSize:9,fontFamily:"var(--font-orbitron, Orbitron, sans-serif)",letterSpacing:"0.1em"}}>PIN</button>
                   </div>
                 ))}
                 <div ref={chatEndRef}/>
               </div>
               <div style={{display:"flex",gap:8}}>
                 <input placeholder="Mensagem como DUA Bot..." value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&cmd("CHAT_BROADCAST",{text:chatInput}).then(()=>setChatInput(""))} style={{...inp,flex:1}} />
-                <button onClick={()=>cmd("CHAT_BROADCAST",{text:chatInput}).then(()=>setChatInput(""))} disabled={!chatInput.trim()} style={{padding:"0 18px",background:"#00ffcc",color:"#030305",border:"none",borderRadius:8,fontFamily:"Orbitron,sans-serif",fontSize:11,fontWeight:700,cursor:"pointer"}}>ENVIAR</button>
+                <button onClick={()=>cmd("CHAT_BROADCAST",{text:chatInput}).then(()=>setChatInput(""))} disabled={!chatInput.trim()} style={{padding:"0 18px",background:"#00ffcc",color:"#030305",border:"none",borderRadius:"var(--radius-md)",fontFamily:"Orbitron,sans-serif",fontSize:11,fontWeight:700,cursor:"pointer"}}>ENVIAR</button>
               </div>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
               <div style={{fontSize:10,color:"#555",letterSpacing:3}}>ACOES RAPIDAS</div>
               {["Intervalo de 5 minutos. Ja voltamos!","Obrigado por estarem aqui. Este momento e especial.","A seguir: VADO MKA no palco!"].map(t=>(
-                <button key={t} onClick={()=>cmd("CHAT_BROADCAST",{text:t})} style={{padding:"12px 16px",background:"rgba(0,0,0,0.4)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:"#aaa",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer",textAlign:"left",letterSpacing:1}}>{t}</button>
+                <button key={t} onClick={()=>cmd("CHAT_BROADCAST",{text:t})} style={{padding:"12px 16px",background:"rgba(0,0,0,0.4)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"var(--radius-md)",color:"#aaa",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer",textAlign:"left",letterSpacing:1}}>{t}</button>
               ))}
             </div>
           </div>
@@ -449,15 +452,15 @@ export default function Backstage() {
                   <div style={{flex:1}}><label style={lbl}>DURACAO (seg)</label><input type="number" min={2} max={30} value={overlayDur} onChange={e=>setOverlayDur(Number(e.target.value))} style={{...inp,width:"100%"}} /></div>
                 </div>
                 <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>cmd("OVERLAY_SHOW",{overlayType:"system_message",message:overlayMsg,duration:overlayDur*1000})} disabled={!overlayMsg} style={{flex:1,padding:12,background:"#00ffcc",color:"#030305",border:"none",borderRadius:8,fontFamily:"Orbitron,sans-serif",fontSize:12,fontWeight:700,cursor:"pointer",letterSpacing:1}}>MOSTRAR NO ECRA</button>
-                  <button onClick={()=>cmd("OVERLAY_HIDE")} style={{padding:"12px 18px",background:"transparent",border:"1px solid #333",borderRadius:8,color:"#666",fontFamily:"Orbitron,sans-serif",fontSize:12,cursor:"pointer"}}>LIMPAR</button>
+                  <button onClick={()=>cmd("OVERLAY_SHOW",{overlayType:"system_message",message:overlayMsg,duration:overlayDur*1000})} disabled={!overlayMsg} style={{flex:1,padding:12,background:"#00ffcc",color:"#030305",border:"none",borderRadius:"var(--radius-md)",fontFamily:"Orbitron,sans-serif",fontSize:12,fontWeight:700,cursor:"pointer",letterSpacing:1}}>MOSTRAR NO ECRA</button>
+                  <button onClick={()=>cmd("OVERLAY_HIDE")} style={{padding:"12px 18px",background:"transparent",border:"1px solid #333",borderRadius:"var(--radius-md)",color:"#666",fontFamily:"Orbitron,sans-serif",fontSize:12,cursor:"pointer"}}>LIMPAR</button>
                 </div>
               </div>
               <div style={{borderTop:"1px solid rgba(255,255,255,0.06)",paddingTop:16}}>
                 <label style={lbl}>CONTAGEM DECRESCENTE</label>
                 <div style={{display:"flex",gap:8}}>
                   <input type="number" min={3} max={60} value={countdown} onChange={e=>setCountdown(Number(e.target.value))} style={{...inp,width:80}} />
-                  <button onClick={()=>cmd("OVERLAY_SHOW",{overlayType:"countdown",countdown,duration:countdown*1000+500})} style={{flex:1,padding:"0 16px",background:"#9b59b6",color:"#fff",border:"none",borderRadius:8,fontFamily:"Orbitron,sans-serif",fontSize:12,fontWeight:700,cursor:"pointer",letterSpacing:1}}>INICIAR</button>
+                  <button onClick={()=>cmd("OVERLAY_SHOW",{overlayType:"countdown",countdown,duration:countdown*1000+500})} style={{flex:1,padding:"0 16px",background:"#9b59b6",color:"#fff",border:"none",borderRadius:"var(--radius-md)",fontFamily:"Orbitron,sans-serif",fontSize:12,fontWeight:700,cursor:"pointer",letterSpacing:1}}>INICIAR</button>
                 </div>
               </div>
             </div>
@@ -469,7 +472,7 @@ export default function Backstage() {
           <div style={{maxWidth:520}}>
             <div style={{fontSize:10,color:"#ff4466",letterSpacing:3,marginBottom:20}}>PAINEL DE EMERGENCIA</div>
             {/* EMERGENCY MESSAGE */}
-            <div style={{background:"rgba(255,68,102,0.08)",border:"1px solid rgba(255,68,102,0.3)",borderRadius:12,padding:20,marginBottom:20}}>
+            <div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:"var(--radius-sm)",padding:20,marginBottom:20}}>
               <label style={{...lbl,color:"#ff4466"}}>MENSAGEM DE EMERGENCIA</label>
               <div style={{display:"flex",gap:8,marginBottom:8}}>
                 <input type="text" placeholder="PAUSA TECNICA" value={emergencyMsg} onChange={e=>setEmergencyMsg(e.target.value)} style={{...inp,borderColor:"rgba(255,68,102,0.3)"}} />
@@ -479,16 +482,16 @@ export default function Backstage() {
                     await cmd("EMERGENCY_MESSAGE",{message:emergencyMsg.trim()});
                   }}
                   disabled={!emergencyMsg.trim()}
-                  style={{padding:"0 20px",background:emergencyMsg.trim()?"rgba(255,68,102,0.3)":"rgba(0,0,0,0.3)",border:"1px solid rgba(255,68,102,0.5)",borderRadius:8,color:emergencyMsg.trim()?"#ff4466":"#444",fontSize:11,fontFamily:"Orbitron,sans-serif",cursor:emergencyMsg.trim()?"pointer":"default",letterSpacing:1,whiteSpace:"nowrap"}}
+                  style={{padding:"0 20px",background:emergencyMsg.trim()?"rgba(255,68,102,0.3)":"rgba(0,0,0,0.3)",border:"1px solid rgba(255,68,102,0.5)",borderRadius:"var(--radius-md)",color:emergencyMsg.trim()?"#ff4466":"#444",fontSize:11,fontFamily:"Orbitron,sans-serif",cursor:emergencyMsg.trim()?"pointer":"default",letterSpacing:1,whiteSpace:"nowrap"}}
                 >ENVIAR</button>
               </div>
               <div style={{fontSize:10,color:"#666"}}>Aparece como overlay vermelho sobre a cena para todos os espectadores.</div>
             </div>
-            <div style={{background:"rgba(255,68,102,0.05)",border:"1px solid rgba(255,68,102,0.2)",borderRadius:12,padding:24,marginBottom:20}}>
+            <div style={{background:"rgba(239,68,68,0.05)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:"var(--radius-sm)",padding:24,marginBottom:20}}>
               <div style={{fontSize:11,color:"#ff4466",letterSpacing:2,marginBottom:16}}>ACOES DE ALTO IMPACTO — AFECTAM TODOS OS ESPECTADORES</div>
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                <button onClick={()=>cmd("EMERGENCY_PAUSE")} style={{padding:18,background:"rgba(255,68,102,0.2)",border:"2px solid rgba(255,68,102,0.6)",borderRadius:8,color:"#ff4466",fontSize:14,fontWeight:700,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:3}}>PAUSAR TUDO</button>
-                <button onClick={()=>cmd("EMERGENCY_RESUME")} style={{padding:18,background:"rgba(0,255,100,0.1)",border:"2px solid rgba(0,255,100,0.4)",borderRadius:8,color:"#00ff88",fontSize:14,fontWeight:700,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:3}}>RETOMAR</button>
+                <button onClick={()=>cmd("EMERGENCY_PAUSE")} style={{padding:18,background:"rgba(255,68,102,0.2)",border:"2px solid rgba(255,68,102,0.6)",borderRadius:"var(--radius-md)",color:"#ff4466",fontSize:14,fontWeight:700,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:3}}>PAUSAR TUDO</button>
+                <button onClick={()=>cmd("EMERGENCY_RESUME")} style={{padding:18,background:"rgba(0,255,100,0.1)",border:"2px solid rgba(0,255,100,0.4)",borderRadius:"var(--radius-md)",color:"#00ff88",fontSize:14,fontWeight:700,fontFamily:"Orbitron,sans-serif",cursor:"pointer",letterSpacing:3}}>RETOMAR</button>
               </div>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -498,7 +501,7 @@ export default function Backstage() {
                 {label:"LIMPAR OVERLAYS",action:()=>cmd("OVERLAY_HIDE")},
                 {label:"ENCERRAR CONCERTO",action:()=>{cmd("PHASE_CHANGE",{phase:"finale"});cmd("OVERLAY_SHOW",{overlayType:"system_message",message:"Obrigado por fazerem parte desta noite!",duration:30000});}},
               ].map(({label,action})=>(
-                <button key={label} onClick={action} style={{padding:"14px 18px",background:"rgba(0,0,0,0.4)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:"#aaa",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer",textAlign:"left",letterSpacing:2}}>{label}</button>
+                <button key={label} onClick={action} style={{padding:"14px 18px",background:"rgba(0,0,0,0.4)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"var(--radius-md)",color:"#aaa",fontSize:12,fontFamily:"Orbitron,sans-serif",cursor:"pointer",textAlign:"left",letterSpacing:2}}>{label}</button>
               ))}
             </div>
           </div>

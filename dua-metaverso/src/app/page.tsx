@@ -21,6 +21,7 @@ import { useVitals } from "@/hooks/useVitals";
 import { useInactivity } from "@/hooks/useInactivity";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { MessageSquare } from "lucide-react";
 import type { ConcertCommand } from "@/types/artist";
 import type { UserProfile } from "@/types/user";
 
@@ -287,7 +288,7 @@ export default function HomePage() {
       <audio id="dua-audio" crossOrigin="anonymous" preload="auto" style={{ display: "none" }} />
 
       <div className={`min-h-screen min-h-[100dvh] bg-[#030305] transition-opacity duration-1000 ${loading ? "opacity-0" : "opacity-100"}`}>
-        <TopBar />
+        <TopBar viewers={viewers} isLive={concertState.phase !== "opening"} />
         <ReactionsOverlay />
         {joined && <CTAButton concertPhase={concertPhase} />}
 
@@ -400,12 +401,13 @@ export default function HomePage() {
             <SheetTrigger
               render={
                 <button
-                  className="fixed bottom-4 left-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-cyan-400/30 bg-black/80 text-lg backdrop-blur-sm lg:hidden"
+                  className="fixed bottom-4 left-4 z-50 flex h-12 w-12 items-center justify-center border bg-black/80 backdrop-blur-sm lg:hidden"
+                  style={{ borderColor: "var(--border-default)", borderRadius: "var(--radius-sm)" }}
                   aria-label="Abrir chat"
                 />
               }
             >
-              💬
+              <MessageSquare size={18} strokeWidth={1.5} style={{ color: "var(--accent-primary)" }} />
             </SheetTrigger>
             <SheetContent side="left" className="w-80 border-r border-cyan-400/10 bg-[#030305] p-0 sm:w-96">
               <div className="h-full pt-10">

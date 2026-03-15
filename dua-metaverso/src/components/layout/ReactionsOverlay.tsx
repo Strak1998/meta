@@ -41,7 +41,7 @@ export default function ReactionsOverlay() {
   }, [addReaction]);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-30 overflow-hidden">
+    <div style={{ position: "fixed", inset: 0, zIndex: 30, overflow: "hidden", pointerEvents: "none" }}>
       {reactions.map((r) => (
         <span
           key={r.id}
@@ -51,7 +51,7 @@ export default function ReactionsOverlay() {
             bottom: "-40px",
             animationDelay: `${r.delay}s`,
             color: r.color,
-            fontFamily: "Orbitron, sans-serif",
+            fontFamily: "var(--font-orbitron, Orbitron, sans-serif)",
             fontSize: "14px",
             fontWeight: 700,
             letterSpacing: "3px",
